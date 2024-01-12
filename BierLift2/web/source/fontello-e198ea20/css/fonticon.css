@@ -1,0 +1,103 @@
+@charset "UTF-8";
+@font-face {
+  font-family: 'fonticon';
+  src: url('../font/fonticon.eot?62517095');
+  src: url('../font/fonticon.eot?62517095#iefix') format('embedded-opentype'),
+       url('../font/fonticon.woff2?62517095') format('woff2'),
+       url('../font/fonticon.woff?62517095') format('woff'),
+       url('../font/fonticon.ttf?62517095') format('truetype'),
+       url('../font/fonticon.svg?62517095#fonticon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+/* Chrome hack: SVG is rendered more smooth in Windozze. 100% magic, uncomment if you need it. */
+/* Note, that will break hinting! In other OS-es font will be not as sharp as it could be */
+/*
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  @font-face {
+    font-family: 'fonticon';
+    src: url('../font/fonticon.svg?62517095#fonticon') format('svg');
+  }
+}
+*/
+[class^="_"]:before, [class*=" _"]:before {
+  font-family: "fonticon";
+  font-style: normal;
+  font-weight: normal;
+  speak: never;
+
+  display: inline-block;
+  text-decoration: inherit;
+  width: 1em;
+  margin-right: .2em;
+  text-align: center;
+  /* opacity: .8; */
+
+  /* For safety - reset parent styles, that can break glyph codes*/
+  font-variant: normal;
+  text-transform: none;
+
+  /* fix buttons height, for twitter bootstrap */
+  line-height: 1em;
+
+  /* Animation center compensation - margins should be symmetric */
+  /* remove if not needed */
+  margin-left: .2em;
+
+  /* you can be more comfortable with increased icons size */
+  /* font-size: 120%; */
+
+  /* Font smoothing. That was taken from TWBS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Uncomment for 3D effect */
+  /* text-shadow: 1px 1px 1px rgba(127, 127, 127, 0.3); */
+}
+
+._home:before { content: '\e4af'; } /* '' */
+._search:before { content: '\e800'; } /* '' */
+._down-bold:before { content: '\e801'; } /* '' */
+._up-bold:before { content: '\e802'; } /* '' */
+._stop-1:before { content: '\e803'; } /* '' */
+._up-outline:before { content: '\e804'; } /* '' */
+._down-outline:before { content: '\e805'; } /* '' */
+._stop-outline:before { content: '\e806'; } /* '' */
+._down-circled:before { content: '\e807'; } /* '' */
+._water:before { content: '\e808'; } /* '' */
+._up-circled:before { content: '\e809'; } /* '' */
+._logout:before { content: '\e80a'; } /* '' */
+._clock:before { content: '\e80b'; } /* '' */
+._stop-circled:before { content: '\e80c'; } /* '' */
+._eye-off:before { content: '\e80d'; } /* '' */
+._help-circled:before { content: '\e80e'; } /* '' */
+._eye:before { content: '\e80f'; } /* '' */
+._arrows-cw:before { content: '\e810'; } /* '' */
+._play:before { content: '\e811'; } /* '' */
+._stop:before { content: '\e812'; } /* '' */
+._pause:before { content: '\e814'; } /* '' */
+._to-end:before { content: '\e815'; } /* '' */
+._to-start:before { content: '\e816'; } /* '' */
+._off:before { content: '\e819'; } /* '' */
+._floppy:before { content: '\e81b'; } /* '' */
+._signal-1:before { content: '\e81f'; } /* '' */
+._spin4:before { content: '\e834'; } /* '' */
+._warehouse:before { content: '\e840'; } /* '' */
+._mail-alt:before { content: '\f0e0'; } /* '' */
+._circle-empty:before { content: '\f10c'; } /* '' */
+._circle:before { content: '\f111'; } /* '' */
+._rocket:before { content: '\f135'; } /* '' */
+._bullseye:before { content: '\f140'; } /* '' */
+._dot-circled:before { content: '\f192'; } /* '' */
+._file-code:before { content: '\f1c9'; } /* '' */
+._circle-thin:before { content: '\f1db'; } /* '' */
+._wifi:before { content: '\f1eb'; } /* '' */
+._toggle-off:before { content: '\f204'; } /* '' */
+._toggle-on:before { content: '\f205'; } /* '' */
+._user-secret:before { content: '\f21b'; } /* '' */
+._free-code-camp:before { content: '\f2c5'; } /* '' */
+._telegram:before { content: '\f2c6'; } /* '' */
+._thermometer-2:before { content: '\f2c9'; } /* '' */
+._microchip:before { content: '\f2db'; } /* '' */
+._cog-alt:before { content: '💦'; } /* '\1f4a6' */
+._emo-beer:before { content: '🔍'; } /* '\1f50d' */

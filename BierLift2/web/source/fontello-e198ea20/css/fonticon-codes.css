@@ -1,0 +1,48 @@
+@charset "UTF-8";
+
+._home:before { content: '\e4af'; } /* '' */
+._search:before { content: '\e800'; } /* '' */
+._down-bold:before { content: '\e801'; } /* '' */
+._up-bold:before { content: '\e802'; } /* '' */
+._stop-1:before { content: '\e803'; } /* '' */
+._up-outline:before { content: '\e804'; } /* '' */
+._down-outline:before { content: '\e805'; } /* '' */
+._stop-outline:before { content: '\e806'; } /* '' */
+._down-circled:before { content: '\e807'; } /* '' */
+._water:before { content: '\e808'; } /* '' */
+._up-circled:before { content: '\e809'; } /* '' */
+._logout:before { content: '\e80a'; } /* '' */
+._clock:before { content: '\e80b'; } /* '' */
+._stop-circled:before { content: '\e80c'; } /* '' */
+._eye-off:before { content: '\e80d'; } /* '' */
+._help-circled:before { content: '\e80e'; } /* '' */
+._eye:before { content: '\e80f'; } /* '' */
+._arrows-cw:before { content: '\e810'; } /* '' */
+._play:before { content: '\e811'; } /* '' */
+._stop:before { content: '\e812'; } /* '' */
+._pause:before { content: '\e814'; } /* '' */
+._to-end:before { content: '\e815'; } /* '' */
+._to-start:before { content: '\e816'; } /* '' */
+._off:before { content: '\e819'; } /* '' */
+._floppy:before { content: '\e81b'; } /* '' */
+._signal-1:before { content: '\e81f'; } /* '' */
+._spin4:before { content: '\e834'; } /* '' */
+._warehouse:before { content: '\e840'; } /* '' */
+._mail-alt:before { content: '\f0e0'; } /* '' */
+._circle-empty:before { content: '\f10c'; } /* '' */
+._circle:before { content: '\f111'; } /* '' */
+._rocket:before { content: '\f135'; } /* '' */
+._bullseye:before { content: '\f140'; } /* '' */
+._dot-circled:before { content: '\f192'; } /* '' */
+._file-code:before { content: '\f1c9'; } /* '' */
+._circle-thin:before { content: '\f1db'; } /* '' */
+._wifi:before { content: '\f1eb'; } /* '' */
+._toggle-off:before { content: '\f204'; } /* '' */
+._toggle-on:before { content: '\f205'; } /* '' */
+._user-secret:before { content: '\f21b'; } /* '' */
+._free-code-camp:before { content: '\f2c5'; } /* '' */
+._telegram:before { content: '\f2c6'; } /* '' */
+._thermometer-2:before { content: '\f2c9'; } /* '' */
+._microchip:before { content: '\f2db'; } /* '' */
+._cog-alt:before { content: '💦'; } /* '\1f4a6' */
+._emo-beer:before { content: '🔍'; } /* '\1f50d' */
