@@ -6,7 +6,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 
 > *English summary:* BierLiftOS is the ESP32 firmware for the DIY in-ground beer cooler "Bierlift 2.0". It drives the lift motor and provides a multilingual (DE/EN/RU) progressive web app, 433 MHz remote control, push button, WS2812B lighting, MP3 playback, water pump control, DS18B20 temperature sensors, weather-aware "Night Cooling", Blynk IoT, Telegram bot, MQTT and a simple HTTP API. Build with PlatformIO (`pio run`), see below.
 
-**Aktuelle Version:** 2026.11.11b
+**Aktuelle Version:** 2026.11.11c
 
 ---
 
@@ -203,12 +203,12 @@ Gekaufte Steuerungen aus dem [Bierlift-Shop](https://www.bierlift.de/shop/) sind
 | `0x1000` | `bootloader_dout_40m_0x1000.bin` |
 | `0x8000` | `partitions_0x8000.bin` |
 | `0xE000` | `boot_0xe000.bin` |
-| `0x10000` | `BierLiftOS_v2026.11.11b_0x10000.bin` |
+| `0x10000` | `BierLiftOS_v2026.11.11c_0x10000.bin` |
 
 ```bash
 esptool.py --chip esp32 --baud 921600 write_flash --flash_mode dout --flash_freq 40m \
   0x1000 bootloader_dout_40m_0x1000.bin 0x8000 partitions_0x8000.bin \
-  0xe000 boot_0xe000.bin 0x10000 BierLiftOS_v2026.11.11b_0x10000.bin
+  0xe000 boot_0xe000.bin 0x10000 BierLiftOS_v2026.11.11c_0x10000.bin
 ```
 
 Vorher den Flash löschen (`esptool.py erase_flash`). Bebilderte Anleitung: [bierlift.de → Installation](https://www.bierlift.de/bierlift-web-server/installation/).
@@ -298,6 +298,7 @@ Gegenüber der bisher veröffentlichten Version (Januar 2024) wurde die Firmware
 **Projekt**
 - PlatformIO-Projekt mit festen Bibliotheksversionen.
 - Kommentare im Code durchgehend auf Deutsch, Oberflächentexte in DE/EN/RU überarbeitet und vereinheitlicht.
+- 2026.11.11c: Texte der WLAN- und Systemseite korrigiert (z. B. „Max. wait for connection“, „Passwort“, „Name des Access Points“).
 
 ---
 
