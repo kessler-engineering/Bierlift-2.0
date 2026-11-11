@@ -432,8 +432,8 @@ h4 {
   background-image: -webkit-linear-gradient(top,var(--background),var(--main-color),var(--background));
 }
 
-/*Для больших экранов*/
-/*по ширине*/
+/*Für große Bildschirme*/
+/*nach Breite*/
 @media (min-width: 600px) {
   header {
     left: var(--drawer-left);
@@ -463,15 +463,15 @@ h4 {
     width: 400px;
   }
 }
-/*по высоте*/
+/*nach Höhe*/
 /*@media (min-height: 500px) {
   #sys-info {
     display: block;
   }
 }*/
 
-/*Для маленьких экранов*/
-/* по ширинет*/
+/*Für kleine Bildschirme*/
+/* nach Breite*/
 @media (max-width: 600px) {
   #drawer-toggle:checked ~ #header-r {
     display: none;
@@ -485,14 +485,14 @@ h4 {
     width: 290px;
   }
 }
-/*по высоте*/
+/*nach Höhe*/
 /*@media (max-height: 500px) {
   #sys-info {
     display: none;
   }
 }*/
 
-/* TAB ELEMENT */
+/* Tab-Element */
 input, select{
   background: var(--background);
   color: var(--value-color);
@@ -506,7 +506,7 @@ input:invalid {
   color: red
 }
 
-/* фон автозаполнения */
+/* Hintergrund bei Autovervollständigung */
 /*input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus,
@@ -952,13 +952,13 @@ pre {
   white-space: pre-wrap;
 }
 
-/*Разделитель*/
+/*Trennlinie*/
 .hr-cont {
   border: 0;
   background-image: -webkit-linear-gradient(left,var(--background),var(--main-color),var(--background));
 }
 
-/* WiFi поиск */
+/* WLAN-Suche */
 .wlist {
   box-shadow: 0 0 15px 5px var(--main-color);
   background: var(--background);  

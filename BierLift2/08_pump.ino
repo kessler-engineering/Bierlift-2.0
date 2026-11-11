@@ -28,7 +28,7 @@ void task_pump(void *pvParameters) {
     }
 
     vTaskDelay(1000);
-    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //TEST
+    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //Test: Stack-Reserve des Tasks melden
       Serial.println("[HEAP] Pump: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
 }

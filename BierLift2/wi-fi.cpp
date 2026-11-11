@@ -7,7 +7,7 @@ void CRMui3::wifiEvent() {
   WiFi.onEvent([this](system_event_id_t event, system_event_info_t info) {
     const int r = info.disconnected.reason;
     switch (event) {
-      case 5: // STA_DISCONNECTED
+      case 5: // WLAN getrennt (STA_DISCONNECTED)
         connState = false;
         if (r == 2 || r == 7 || r == 15) WiFi.reconnect();
         else if ((_wifiMode == 1 || _wifiMode == 3) && !firstConnect &&
@@ -18,7 +18,7 @@ void CRMui3::wifiEvent() {
         }
         break;
 
-      case 7: // STA_GOT_IP
+      case 7: // IP-Adresse erhalten (STA_GOT_IP)
         connState = true;
         SPLN(String() + F("[WiFi] Connecting to \"") + WiFi.SSID() + F("\" is done. ") +
              F("(IP: ") + WiFi.localIP().toString() + F(")"));
@@ -87,4 +87,5 @@ String CRMui3::wifiScan() {
     WiFi.scanNetworks(true, false, false, 150);
     return F("{\"s\":-2}");
   }
+  return F("{\"s\":-1}");
 }

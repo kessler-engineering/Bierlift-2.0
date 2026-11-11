@@ -2,7 +2,7 @@
 void interface() {
   xSemaphoreTake(wifi_mutex, portMAX_DELAY);
 
-  //УПРАВЛЕНИЕ
+  //STEUERUNG
   crm.page(lng(L_M_CONTROL));
   crm.output({OUTPUT_TABL, "STATUS", lng(L_STATUS), workState(), "fff"});
   if (VTIN || VTOUT) crm.output({OUTPUT_TABL, "TEMP", lng(L_TEMP), tempState(), "fff"});
@@ -29,7 +29,7 @@ void interface() {
   }
 
 
-  //ПОДСВЕТКА
+  //BELEUCHTUNG
   crm.page(lng(L_M_LIGHT));
   crm.range({"LEDN", lng(L_LED_QUANTITY), 60, 1, MAX_LED_IN_STRIP, 1});
   crm.select({"mLED", lng(L_LED_EFFECTS), "0", {{lng(L_LED_E_OFF), "0"}, {lng(L_LED_E_STATIS_COLOR), "1"},
@@ -47,7 +47,7 @@ void interface() {
   crm.input({INPUT_BUTTON, "RBT", lng(L_REBOOT)});
 
 
-  //ВОДА
+  //WASSER UND PUMPE
   crm.page(lng(L_M_WATER));
   if (OLD == false) crm.input({INPUT_CHECKBOX, "USEPM", lng(L_USE_PUMP), "false", "1"});
   crm.input({INPUT_CHECKBOX, "USEWS", lng(L_USE_WATER_SENS), "false", "1"});
@@ -61,7 +61,7 @@ void interface() {
   }
 
 
-  //ТЕМПЕРАТУРА
+  //TEMPERATUR
   crm.page(lng(L_M_TEMP));
   crm.input({INPUT_CHECKBOX, "VTIN", lng(L_EN_TEMP_MEAS_IN), "false", "1"});
   crm.input({INPUT_CHECKBOX, "VTOUT", lng(L_EN_TEMP_MEAS_OUT), "false", "1"});
@@ -71,20 +71,22 @@ void interface() {
     if (NCOOL) {
       crm.output({OUTPUT_TABL, "TM", lng(L_TIME), curTime(), "fff"});
       if (WTHR) crm.output({OUTPUT_TABL, "WR", lng(L_WEATHER), weatherString(), "fff"});
-      crm.input({INPUT_NUMBER, "TZ", lng(L_TIME_ZONE), "120"});
+      // Erst die Sommerzeit-Option, dann die Zone: mit Automatik ist TZ die Winterzeit (DE: 60).
+      crm.input({INPUT_CHECKBOX, "DSTEU", lng(L_AUTO_DST), "false", "1"});
+      crm.input({INPUT_NUMBER, "TZ", (DSTEU ? lng(L_TIME_ZONE_WINTER) : lng(L_TIME_ZONE)), "120"});
       crm.input({INPUT_TIME, "TOPN", lng(L_TIME_OPEN)});
       crm.input({INPUT_TIME, "TCSE", lng(L_TIME_CLOSE)});
       crm.range({"TGIST", lng(L_TEMP_GISTER)+" Tin - Tout", 5, 0, 20, 1, " °C"});
-      crm.range({"TMOVE", lng(L_ASCENT_TIME), 3000, 300, 10000, 50, lng(L_MSEC)});
+      crm.range({"TMOVE", lng(L_OPEN_STROKE), 3000, 300, 10000, 50, lng(L_MSEC)});
       crm.input({INPUT_CHECKBOX, "WTHR", lng(L_CONSIDER_THE_WEATHER), "false", "1"});
       if (WTHR) {
-        crm.input({INPUT_TEXT, "WID", lng(L_COORDINATS)+" (lat, lon)", ""});
+        crm.input({INPUT_TEXT, "WID", lng(L_COORDINATS), ""});
         crm.range({"WSPD", lng(L_WIND_SPEED), 20, 1, 30, 0.1, lng(L_MS)});
       }
     }
   }
 
-  //ЗВУК
+  //SOUND
   crm.page(lng(L_M_SOUND));
   crm.input({INPUT_CHECKBOX, "SUSE", lng(L_USE_SOUND), "false", "1"});
   crm.range({"SVOL", lng(L_SOUND_VOL), 10, 1, 30, 1});
@@ -122,12 +124,12 @@ void interface() {
   crm.input({INPUT_CHECKBOX, "BUSE", lng(L_USE_BLYNK), "false", "1"});
   crm.input({INPUT_TEXT, "BAPI", lng(L_BLYNK_API), ""});
 #ifdef BLYNK_TEMPLATE_ID
-  crm.input({INPUT_TEXT, "BTID", "BLYNK TEMPLATE ID", ""});
+  crm.input({INPUT_TEXT, "BTID", lng(L_BLYNK_TMPL), ""});
 #endif
   crm.input({INPUT_BUTTON, "RBT", lng(L_REBOOT)});
 
 
-  //RF
+  //FERNBEDIENUNG 433 MHz
   crm.page(lng(L_WIRE_REMOTE));
   crm.input({INPUT_CHECKBOX, "USERF", lng(L_USE_CODE), "false", "1"});
   //if (USERF) {
@@ -146,7 +148,7 @@ void interface() {
   //}
 
 
-  //Telegram
+  //TELEGRAM
   crm.page(lng(L_M_TELEGA));
   crm.input({INPUT_CHECKBOX, "TGUSE", lng(L_USE_TELEGA), "false"});
   crm.input({INPUT_CHECKBOX, "TGNOTIF", lng(L_TELEGA_NOTIF), "false"});
@@ -166,13 +168,13 @@ void interface() {
   crm.input({INPUT_TEXT, "MQTP", lng(L_MQTT_PREFIX), ""});
 
 
-  //WI-FI
+  //WLAN
   crm.page(lng(L_M_WIFI));
   crm.wifiForm(WIFI_AP, F("BierliftKE"));
   crm.input({INPUT_BUTTON, "RBT", lng(L_REBOOT)});
 
 
-  //ДВИЖЕНИЕ
+  //BEWEGUNG
   crm.page(lng(L_M_MOVE));
   crm.range({"UTIME", lng(L_ASCENT_TIME), 20, 1, 60, 1, lng(L_SEC)});
   crm.range({"DTIME", lng(L_DESCENT_TIME), 20, 1, 60, 1, lng(L_SEC)});
@@ -183,18 +185,18 @@ void interface() {
   }
 
 
-  //РАЗНОЕ
+  //VERSCHIEDENES
   crm.page(lng(L_M_OTHER));
   crm.input({INPUT_CHECKBOX, "OLD", lng(L_ADAPT_OLD), "false", "1"});
   crm.input({INPUT_CHECKBOX, "CHP", lng(L_CHILD_PROT), "false"});
   crm.input({INPUT_CHECKBOX, "LFLASH", lng(L_LFLASH), "true"});
-  crm.input({INPUT_CHECKBOX, "CHUDT", lng(L_CHUDT), "true"});
-  crm.input({INPUT_BUTTON, "BTCUDT", lng(L_UDT_SEARCH)});   //Кнопка для ручного проверки обновления
+  crm.input({INPUT_CHECKBOX, "CHUDT", lng(L_CHUDT), "false"});
+  crm.input({INPUT_BUTTON, "BTCUDT", lng(L_UDT_SEARCH)});   //Button für die manuelle Update-Prüfung
   crm.output({OUTPUT_HR, "1px", "25px 0 0"});
   crm.input({INPUT_BUTTON, "RBT", lng(L_REBOOT)});
 
 
-  //РАЗРАБОТКА
+  //DEVELOPMENT-PINS
   crm.page(lng(L_M_DEVELOP));
   crm.input({INPUT_CHECKBOX, "DP22", lng(L_D_PIN) + "22", "false", "1"});
   if (DP22) {
@@ -226,7 +228,7 @@ void interface() {
     if (DP26C) crm.input({INPUT_TEXT, "DP26N", lng(L_D_BT_NAME), "GPIO 26"});
   }
 
-  //Уведомление о новой версии
+  //Hinweis auf eine neue Firmware-Version
   if (CHUDT && newVerSt() == 2 && !crm.webConnCountStatus()) {
     udtNotif.once_ms(2000, udtNotifSend);
   }

@@ -42,7 +42,7 @@ void rfControl(void *pvParameters) {
     }
 
     vTaskDelay(500);
-    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //TEST
+    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //Test: Stack-Reserve des Tasks melden
       Serial.println("[HEAP] RF: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
 }
@@ -50,26 +50,23 @@ void rfControl(void *pvParameters) {
 
 void rfAction(int a) {
   switch (a) {
-    //ехать вверх/вниз/стоп (поочереди)
+    //hoch / stopp / runter im Wechsel
     case 1: {
-        if (releyStatus) {
-          releyAction(0);
-          releyDirection = !releyDirection;
-        } else releyDirection ? releyAction(1) : releyAction(-1);
+        releyAction(LIFT_CMD_TOGGLE);   // Wechsel wird in loop() ausgewertet
       } break;
-    //ехать вверх
+    //hoch
     case 2: {
         releyAction (1);
       } break;
-    //ехать вниз
+    //runter
     case 3: {
         releyAction (-1);
       } break;
-    //Стоп
+    //Stopp
     case 4: {
         releyAction (0);
       } break;
-    //музыка громче
+    //Musik lauter
     case 5: {
         if (SVOL < 31) {
           SVOL++;
@@ -77,7 +74,7 @@ void rfAction(int a) {
           crm.webUpdate("SVOL", String(SVOL), true);
         }
       } break;
-    //музыка тише
+    //Musik leiser
     case 6: {
         if (SVOL > 0) {
           SVOL--;
@@ -85,31 +82,32 @@ void rfAction(int a) {
           crm.webUpdate("SVOL", String(SVOL), true);
         }
       } break;
-    //рестарт вайфай
+    //WLAN neu verbinden (nur wenn getrennt)
     case 7: {
         if (WiFi.status() != WL_CONNECTED && WiFi.RSSI() == 0) WiFi.reconnect();
       } break;
-    //ребут ЕСП32
+    //ESP32 neu starten
     case 8: {
         crm.webNotif("i", lng(L_NOTIF_REBOOT), 3);
         tgNotif(lng(L_NOTIF_REBOOT));
         mqttSend("s", lng(L_NOTIF_REBOOT));
+        tgFlush(3000);
         crm.espReboot();
       } break;
-    //выключить подсветку
+    //Beleuchtung einschalten (russ. Original sagte fälschlich "aus")
     case 9: {
         lift_position = true;
         if (mLED) ledPowerAction(true);
       } break;
-    //включить подсветку
+    //Beleuchtung ausschalten (russ. Original sagte fälschlich "ein")
     case 10: {
         ledPowerAction(false);
       } break;
-    //включить помпу
+    //Pumpe einschalten
     case 11: {
         pump_action(1);
       } break;
-    //выключить помпу
+    //Pumpe ausschalten
     case 12: {
         pump_action(0);
       } break;
@@ -124,7 +122,7 @@ void SendCode(long code, uint8_t port, uint8_t pacs) {
   RCSwitch rfSender = RCSwitch();
   rfSender.enableTransmit(port);
   //rfSender.setPulseLength(320);       //
-  rfSender.setRepeatTransmit(pacs);     //Количество посылок в пакете
-  rfSender.send(abs(code), 24);         //Отправка кода
+  rfSender.setRepeatTransmit(pacs);     //Anzahl Wiederholungen pro Sendung
+  rfSender.send(abs(code), 24);         //Code senden (24 Bit)
   Serial.println("[RF] Code \"" + String(abs(code)) + F("\" send."));
 }

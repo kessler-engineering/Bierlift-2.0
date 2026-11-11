@@ -13,7 +13,7 @@ void ds18_read(void *pvParameters) {
       ds18.begin();
       Serial.printf("[SENSOR] Found %d devices DS18B20.\n", ds18.getDeviceCount());
       if (ds18.getResolution() != 12) ds18.setResolution(12);
-      ds18.setWaitForConversion(true);    //Ожидать вычисления
+      ds18.setWaitForConversion(true);    //Auf das Messergebnis warten (bis ca. 750 ms)
     }
 
     ds18.requestTemperatures();
@@ -41,7 +41,7 @@ void ds18_read(void *pvParameters) {
 
     //Serial.printf("Temperature Tin %.1f, Tout %.1f\n", Tin, Tout);
     vTaskDelay(5000);
-    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //TEST
+    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //Test: Stack-Reserve des Tasks melden
       Serial.println("[HEAP] Temp: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
 }
@@ -54,7 +54,7 @@ String tempState() {
     if (VTIN) t += F("\\n");
     t += lng(L_T_OUT) + (Tout != -127 ? (String(Tout , 1) + String(" °C")) : lng(L_SENS_ERR));
   }
-  return t != "" ? t : "Sensors are not used.";
+  return t != "" ? t : lng(L_SENS_NOT_USED);
 }
 
 
@@ -70,7 +70,7 @@ void waterSensRead(void *pvParameters) {
       tgNotif(lng(L_WATER_LVL) + String(waterVol));
     }
     vTaskDelay(1000);
-    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //TEST
+    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //Test: Stack-Reserve des Tasks melden
       Serial.println("[HEAP] Water: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
 }

@@ -11,10 +11,8 @@
 #include <BlynkSimpleEsp32.h>
 #include <RCSwitch.h>
 #include <cstdio>
-#include <AsyncTelegram2.h>
-#include <SSLClient.h>
-#include <tg_certificate.h>
 #include <AsyncMqttClient.h>
+
 
 
 CRMui3 crm;
@@ -27,10 +25,12 @@ CRMbutton<BUTTON_PIN> bt;
 CRGB leds[MAX_LED_IN_STRIP];
 HardwareSerial dfSerial(1);
 DFRobotDFPlayerMini dfPlayer;
-WiFiClient tgClient;
-SSLClient tgSSL(tgClient, TAs, (size_t)TAs_NUM, A0, 1, SSLClient::SSL_NONE);
-AsyncTelegram2 tgBot(tgSSL);
 AsyncMqttClient mqttClient;
+
+//Telegram-Bot
+#include <FastBot.h>
+FastBot tg("");
+
 
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName) {
@@ -39,6 +39,9 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName) 
 
 void setup() {
   wifi_mutex = xSemaphoreCreateMutex();
+  loopTask_h = xTaskGetCurrentTaskHandle();         // setup() und loop() laufen im selben Task
+  liftCmdQueue = xQueueCreate(8, sizeof(int));
+  tgQueue = xQueueCreate(10, sizeof(String *));
 
   pinMode(OPTO_SENSOR_PIN, INPUT);
   pinMode(WATER_SENS_PIN, INPUT);
@@ -52,20 +55,19 @@ void setup() {
   digitalWrite(SEED_PIN, LOW);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-  {
-    String C = CRM_VER;
-    C.replace(".", "");
-    lastVER = C.toDouble();
-  }
+  lastVER = verToNum(CRM_VER);
 
+#ifdef USE_ARDUINO_OTA
   crm.useArduinoOta();
+#endif
   crm.begin(BL_NAME, interface, update, api, 115200);
   //crm.setWebAuth("admin", "admin");
   //crm.setApiKey("a123");
 
   dev_init();
 
-  LEDN = crm.var("LEDN").toInt();
+  // Nur im Browser begrenzt – hier hart begrenzen, sonst Überlauf von leds[MAX_LED_IN_STRIP]
+  LEDN = constrain(crm.var("LEDN").toInt(), 1, MAX_LED_IN_STRIP);
   FastLED.addLeds<WS2812, LED_DIN_PIN, GRB>(leds, LEDN).setCorrection(TypicalLEDStrip);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, MAX_POWER_SUPPLY_CURRENT);
   FastLED.clear();
@@ -79,9 +81,9 @@ void loop() {
   crm.run();
   button_hw();
   button_web();
+  liftCmdQueueHandle();
   reley_handle();
   led_handle();
-  weatherRun();
   if (releyStatus && millis() - stateTimer >= 1000) {
     stateTimer = millis();
     crm.webUpdate("STATUS", workState());

@@ -18,6 +18,35 @@ AsyncWebSocket ws("/ws");
 DNSServer dnsServer;
 
 
+// Geheime Konfigurationswerte, die nie an den Browser oder in die Backup-Datei gehen.
+// Sie werden durch SECRET_MASK ersetzt. Kommt SECRET_MASK per /set oder Config-Upload
+// zurück, bleibt der gespeicherte Wert unverändert.
+static const char *const SECRET_KEYS[] = {"_p", "_ap", "TGBOT", "MQPW", "BAPI"};
+
+bool CRMui3::isSecretKey(const String &key) {
+  for (const char *k : SECRET_KEYS) {
+    if (key == k) return true;
+  }
+  return false;
+}
+
+void CRMui3::serializeCfgMasked(String &out) {
+  out += "{";
+  bool first = true;
+  for (JsonPair kv : cfg.as<JsonObject>()) {
+    if (!first) out += ",";
+    first = false;
+    out += "\"";
+    out += kv.key().c_str();
+    out += "\":";
+    String v = kv.value().as<String>();
+    if (isSecretKey(kv.key().c_str()) && v != "" && v != "null") out += "\"" SECRET_MASK "\"";
+    else serializeJson(kv.value(), out);
+  }
+  out += "}";
+}
+
+
 void CRMui3::useArduinoOta() {
   _useArduinoOta = true;
 }
@@ -45,6 +74,9 @@ void CRMui3::begin(const String &app_name, void (*uiFunction)(), void (*updateFu
   if (upd) upd();
   if (_useArduinoOta) {
     ArduinoOTA.setHostname(var(F("_as")).c_str());
+#ifdef ARDUINO_OTA_PASSWORD
+    ArduinoOTA.setPassword(ARDUINO_OTA_PASSWORD);
+#endif
     ArduinoOTA.begin();
   }
   if (_wifiMode > 1) dnsServer.start(53, "*", WiFi.softAPIP());
@@ -125,7 +157,7 @@ void CRMui3::http() {
     } /*else if (type == WS_EVT_DATA) {
       AwsFrameInfo *info = (AwsFrameInfo*)arg;
       if (info->final && info->index == 0 && info->len == len) {
-        if (info->opcode == WS_TEXT) { // если текстовые данные вебсокета
+        if (info->opcode == WS_TEXT) { // Textdaten über den WebSocket
           data[len] = 0;
           if (String((char*)data) == "i") {
 
@@ -147,7 +179,7 @@ void CRMui3::http() {
            CRM_VER + F("\",\"a\":") + String(_AuthenticateStatus) + F(",\"c\":[");
     ui();
     _buf += F("],\"cfg\":");
-    serializeJson(cfg, _buf);
+    serializeCfgMasked(_buf);
     _buf += "}";
     if (_buf.length() > 7000) request->send_P(200, F("application/json"), _buf.c_str());
     else request->send(200, F("application/json"), _buf);
@@ -165,6 +197,7 @@ void CRMui3::http() {
       String pname = p->name();
       if (pname.indexOf("BT_") != -1) _btnui = pname.substring(3);
       else if (pname == "wUPD") ws.textAll(String("{\"_t\":0}").c_str());
+      else if (p->value() == SECRET_MASK) continue;   // maskierter Geheimwert: gespeicherten Wert behalten
       else {
         DBGLN("[VAR] " + pname + F(" = ") + p->value());
         if (pname.indexOf("CR_") != -1) {
@@ -187,7 +220,7 @@ void CRMui3::http() {
           if (!request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
             return request->requestAuthentication();
         } else {
-          if (request->getParam(0)->value() != _apiKey)
+          if (request->params() < 1 || request->getParam(0)->value() != _apiKey)
             return request->requestAuthentication();
         }
       }
@@ -219,15 +252,13 @@ void CRMui3::http() {
   server.on("/cfgdownload", HTTP_GET, [this](AsyncWebServerRequest * request) {
     if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
       return request->requestAuthentication();
-    cfgSave();
-    if (SPIFFS.exists(F("/config.json"))) {
-      File cf = SPIFFS.open(F("/config.json"), "r");
-      String s = cf.readString();
-      cf.close();
-      AsyncWebServerResponse *response = request->beginResponse(200, F("application/json"), s);
-      response->addHeader(F("Content-Disposition"), F("attachment; filename=\"BierLift.cfg\""));
-      request->send(response);
-    } else request->send(404, F("text/plain"), F("Configuration file not found."));
+    // Backup ohne Passwörter/Tokens (siehe SECRET_KEYS). Nach dem Wiederherstellen
+    // auf einem neuen Gerät müssen diese Werte neu eingegeben werden.
+    String s = String();
+    serializeCfgMasked(s);
+    AsyncWebServerResponse *response = request->beginResponse(200, F("application/json"), s);
+    response->addHeader(F("Content-Disposition"), F("attachment; filename=\"BierLift.cfg\""));
+    request->send(response);
   });
 
 
@@ -260,7 +291,9 @@ void CRMui3::http() {
         deserializeJson(doc, s);
         s = String();
         for (JsonPair kv : doc.as<JsonObject>()) {
-          var(String(kv.key().c_str()), kv.value().as<String>());
+          String v = kv.value().as<String>();
+          if (v == SECRET_MASK) continue;   // maskierter Geheimwert: gespeicherten Wert behalten
+          var(String(kv.key().c_str()), v);
         }
         if (upd) upd();
         request->send(200, F("text/plain"), F("Config file update."));
@@ -281,6 +314,9 @@ void CRMui3::http() {
     response->addHeader(F("Connection"), F("close"));
     request->send(response);
   }, [this](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+    // Der Upload-Handler läuft vor dem Request-Handler: Anmeldung hier prüfen,
+    // sonst würde die Firmware trotz aktivierter Web-Anmeldung geflasht.
+    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str())) return;
     if (!index) {
       SPLN(String(F("Update started, please wait.\nFirmware file: ")) + filename);
       if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) Update.printError(Serial);
@@ -308,7 +344,7 @@ void CRMui3::http() {
   });
 
 
-  // ********** Page files **********
+  // ********** Seitendateien **********
   server.on("/", HTTP_ANY, [this](AsyncWebServerRequest * request) {
     if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
       return request->requestAuthentication();
@@ -450,7 +486,7 @@ void CRMui3::apiResponse(const String &p, const String &v) {
   _apiResponse += "\"" + p + "\":\"" + v + "\"}";
 }
 
-//*webUpdateBuf
+//* Werte sammeln und gebündelt per WebSocket an den Browser senden
 void CRMui3::webUpdate(const String & name, const String & value, bool n) {
   if (_sendingToWeb) {
     if (name == "") {
