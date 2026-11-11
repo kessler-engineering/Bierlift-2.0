@@ -45,7 +45,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 
 ## Hardware
 
-BierLiftOS ist für die **Bierlift-2.0-Steuerung** gemacht: ESP32-DevKit (38 Pins) auf dem Control Board, verbunden mit dem Adapter Board, an dem Motor, Sensoren und Peripherie hängen. Eine Anleitung zur Elektrik steht auf [bierlift.de → Elektrik und Steuerung](https://www.bierlift.de/bierlift-2-0/4-elektrik-und-steuerung/). Die alte Elektronik (Bierlift-Shield / Bierlift 1.0) lässt sich mit Einschränkungen betreiben (Option unter *Sonstiges*).
+BierLiftOS ist für die **Bierlift-2.0-Steuerung** gemacht: ESP32-DevKit mit **30 Pins** (ESP32-WROOM-32, z. B. DOIT ESP32 DevKit V1) auf dem Control Board, verbunden mit dem Adapter Board, an dem Motor, Sensoren und Peripherie hängen. Eine Anleitung zur Elektrik steht auf [bierlift.de → Elektrik und Steuerung](https://www.bierlift.de/bierlift-2-0/4-elektrik-und-steuerung/). Die alte Elektronik (Bierlift-Shield / Bierlift 1.0) lässt sich mit Einschränkungen betreiben (Option unter *Sonstiges*).
 
 ### Pinbelegung (ESP32)
 
