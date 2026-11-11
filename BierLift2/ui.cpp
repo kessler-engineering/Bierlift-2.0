@@ -9,7 +9,7 @@
     {
       {"label", "value"},
       ...
-      до 50-ти
+      bis zu 50
     }
   } Select;
 */

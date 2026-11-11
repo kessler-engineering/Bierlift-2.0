@@ -1,110 +1,123 @@
 
-bool tgAPI(TBMessage m) {
+//Telegram-Menü (Tasten der Bot-Tastatur)
+const String &tgMenu(F("↑↑\t↑\nstatus\tstop\ttemp\n↓↓\t↓"));
 
-  String t = m.text;
-  String id = crm.var("TGID");
-  if (id != "" && (int64_t)id.toInt() != m.chatId) {
-    tgBot.sendMessage(m, String(m.sender.username) + " (ID " + String((uint32_t)m.chatId) + lng(L_TELEGA_s1));
-    tgNotif(lng(L_TELEGA_s2) + String(m.sender.username) + " (ID " + String((uint32_t)m.chatId) + "):  " + m.text);
-    return false;
+
+void tgMessage(FB_msg &msg) {
+  {
+    String m(F("[TG] "));
+    m += msg.username;
+    m += F(" (");
+    m += msg.userID;
+    m += F("): ");
+    m += msg.text;
+    Serial.println(m);
   }
 
-  if (t.equalsIgnoreCase("↑↑")) {
-    tgBot.sendMessage(m, "OK");
-    releyAction(2);
-  }
+  if (msg.userID == crm.var("TGID")) {
+    const String &t(msg.text);
+    const String &OK(F("OK"));
 
-  if (t.equalsIgnoreCase("↑")) {
-    tgBot.sendMessage(m, "OK");
-    releyAction(1);
-  }
+    if (t.equalsIgnoreCase("↑↑")) {
+      tg.sendMessage(OK);
+      releyAction(2);
+    }
 
-  if (t.equalsIgnoreCase("stop")) {
-    tgBot.sendMessage(m, "OK");
-    releyAction(0);
-  }
+    else if (t.equalsIgnoreCase("↑")) {
+      tg.sendMessage(OK);
+      releyAction(1);
+    }
 
-  if (t.equalsIgnoreCase("↓")) {
-    tgBot.sendMessage(m, "OK");
-    releyAction(-1);
-  }
+    else if (t.equalsIgnoreCase("stop")) {
+      tg.sendMessage(OK);
+      releyAction(0);
+    }
 
-  if (t.equalsIgnoreCase("↓↓")) {
-    tgBot.sendMessage(m, "OK");
-    releyAction(-2);
-  }
+    else if (t.equalsIgnoreCase("↓")) {
+      tg.sendMessage(OK);
+      releyAction(-1);
+    }
 
-  if (t.equalsIgnoreCase("status")) {
-    tgBot.sendMessage(m, workState());
-  }
+    else if (t.equalsIgnoreCase("↓↓")) {
+      tg.sendMessage(OK);
+      releyAction(-2);
+    }
 
-  if (t.equalsIgnoreCase("temp")) {
-    String s = tempState();
-    s.replace("\\n", "\n");
-    Serial.println(s);
-    tgBot.sendMessage(m, s);
-  }
+    else if (t.equalsIgnoreCase("status")) {
+      tg.sendMessage(workState());
+    }
 
-  return true;
+    else if (t.equalsIgnoreCase("temp")) {
+      String m(tempState());
+      m.replace("\\n", "\n");
+      Serial.println(m);
+      tg.sendMessage(m);
+    }
+
+    else {
+      tg.showMenuText(lng(L_TG_INVALIDE_COMMAND), tgMenu);
+    }
+
+  } else {
+    String m(lng(L_TELEGA_s2));
+    m += msg.username;
+    m += F(" (ID ");
+    m += msg.userID;
+    m += F("):  ");
+    m += msg.text;
+    tgNotif(m);
+  }
 }
 
 
 void telegram(void *pvParameters) {
   int kucha = uxTaskGetStackHighWaterMark(NULL);
-  ReplyKeyboard keyBoard;
   bool init = false;
   for (;;) {
     if (WiFi.status() == WL_CONNECTED) {
       if (init) {
-        TBMessage msg;
-        if (tgBot.getNewMessage(msg)) {
-          Serial.println("Message from @" + String(msg.sender.username) + " (ID " + String((uint32_t)msg.chatId) + "):\t" + msg.text);
-          if (msg.text.equalsIgnoreCase("/start"))
-            tgBot.sendMessage(msg, "I'm ready 🚀", keyBoard);
-          if (msg.text.equalsIgnoreCase("hide keyboard"))
-            tgBot.removeReplyKeyboard(msg, "Keyboard hide");
-          tgAPI(msg);
+        tg.tick();
+        // Gepufferte Meldungen senden (tgNotif() aus anderen Tasks/loop()).
+        String *p = NULL;
+        while (tgQueue != NULL && xQueueReceive(tgQueue, &p, 0) == pdTRUE) {
+          if (p != NULL) {
+            tg.showMenuText(*p, tgMenu);
+            delete p;
+          }
         }
       } else {
-        tgBot.setUpdateTime(2000);
-        String t = crm.var("TGBOT");
-        char *cstr = new char[t.length() + 1];
-        strcpy(cstr, t.c_str());
-        tgBot.setTelegramToken(cstr);
-        Serial.println("\n[TG] Telegram connection... ");
-        init = tgBot.begin() ? Serial.println("DONE") : Serial.println("FAILED");
-        if (init) tgNotif(lng(L_TELEGA_ONLINE));
-
-        keyBoard.addButton("↑↑");
-        keyBoard.addButton("↑");
-        keyBoard.addRow();
-        keyBoard.addButton("status");
-        keyBoard.addButton("stop");
-        keyBoard.addButton("temp");
-        keyBoard.addRow();
-        keyBoard.addButton("↓↓");
-        keyBoard.addButton("↓");
-        /*keyBoard.addRow();
-        keyBoard.addButton("hide keyboard");*/
-        keyBoard.enableResize();
+        tg.setToken(crm.var("TGBOT"));
+        tg.setChatID(crm.var("TGID"));
+        tg.setPeriod(2000);
+        tg.attach(tgMessage);
+        tg.showMenuText(String(("🍺 ")) + lng(L_TELEGA_ONLINE), tgMenu);
+        init = 1;
       }
     }
-    vTaskDelay(100);
+    vTaskDelay(500);
     if (kucha > uxTaskGetStackHighWaterMark(NULL))
       Serial.println("[HEAP] Telegram: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
 }
 
 
-void tgNotif(const String &m) {
-  if (TGUSE && TGNOTIF && WiFi.status() == WL_CONNECTED) {
+// Stellt die Meldung nur in die Queue – gesendet wird im Telegram-Task.
+// Früher lief hier eine blockierende HTTPS-Anfrage, auch aus loop() bei jedem Fahrbefehl.
+void tgNotif(const String & m) {
+  if (TGUSE && TGNOTIF && tgQueue != NULL && WiFi.status() == WL_CONNECTED) {
     String id = crm.var("TGID");
-    if (id != "")
-      tgBot.sendTo((int64_t)id.toInt(), m);
+    if (id != "") {
+      String *p = new String(m);
+      if (xQueueSend(tgQueue, &p, 0) != pdTRUE) delete p;   // Queue voll: Meldung verwerfen
+    }
   }
 }
 
-// msg.sender.languageCode   язык
-// msg.text                  текст
-// msg.sender.username       имя пользователя
-// msg.chatId                id пользователя
+
+// Vor Neustart/Reset: kurz warten, bis der Telegram-Task die Queue geleert hat.
+void tgFlush(uint32_t timeout_ms) {
+  if (!TGUSE || telegram_task == NULL || tgQueue == NULL) return;
+  uint32_t t = millis();
+  while (uxQueueMessagesWaiting(tgQueue) > 0 && millis() - t < timeout_ms) vTaskDelay(50);
+  vTaskDelay(300);   // letzte Anfrage abschließen lassen
+}

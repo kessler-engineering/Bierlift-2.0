@@ -12,11 +12,11 @@ void reley_handle() {
         ledOnBoard(1);
         optoStatus = true;
         optoTimer = millis();
+        // Nicht auf den wifi_mutex warten (blockierte sonst loop() bei hängendem Blynk);
+        // der Blynk-Task sendet den Wert.
         if (BUSE && blynkConnSt) {
-          xSemaphoreTake(wifi_mutex, portMAX_DELAY);
-          if (releyDirection) Blynk.virtualWrite(V0, (motorSpeed ? 2 : 1)); //U
-          else Blynk.virtualWrite(V0, (motorSpeed ? -2 : -1)); //D
-          xSemaphoreGive(wifi_mutex);
+          if (releyDirection) blynkV0Pending = (motorSpeed ? 2 : 1); //hoch
+          else blynkV0Pending = (motorSpeed ? -2 : -1); //runter
         }
         crm.webUpdate("STATUS", workState());
         Serial.println(String(releyDirection ? "UP_PIN: " : "DOWN_PIN: ") + String(digitalRead(releyDirection ? UP_PIN : DOWN_PIN)));
@@ -43,7 +43,42 @@ void reley_handle() {
 }
 
 
-void releyAction (const int action) {
+// Einstiegspunkt für alle Fahrbefehle (2, 1, 0, -1, -2, LIFT_CMD_TOGGLE).
+// Aufrufe aus loop() werden direkt ausgeführt, alle anderen Tasks/Ticker
+// stellen den Befehl in die Queue – so greift nur loop() auf Relais und Motorzustand zu.
+void releyAction(int action) {
+  if (action != LIFT_CMD_TOGGLE && (action < -2 || action > 2)) {
+    Serial.println(String("[LIFT] Invalid command: ") + String(action));
+    return;
+  }
+  if (loopTask_h == NULL || xTaskGetCurrentTaskHandle() == loopTask_h) {
+    liftCmdExec(action);
+  } else if (liftCmdQueue == NULL || xQueueSend(liftCmdQueue, &action, 0) != pdTRUE) {
+    Serial.println(F("[LIFT] Command queue full, command dropped"));
+  }
+}
+
+
+void liftCmdQueueHandle() {
+  int a;
+  while (liftCmdQueue != NULL && xQueueReceive(liftCmdQueue, &a, 0) == pdTRUE) {
+    liftCmdExec(a);
+  }
+}
+
+
+void liftCmdExec(int action) {
+  if (action == LIFT_CMD_TOGGLE) {
+    if (releyStatus) {
+      releyActionExec(0);
+      releyDirection = !releyDirection;
+    } else releyDirection ? releyActionExec(1) : releyActionExec(-1);
+  } else releyActionExec(action);
+}
+
+
+// Nur aus loop() aufrufen (über releyAction / liftCmdExec).
+void releyActionExec(const int action) {
   Serial.println(String("\nACTION: ") + String(action));
   if (lastAction != action) {
     releyOffTimer = millis();
@@ -101,11 +136,7 @@ void releyAction (const int action) {
           releyCommandStatus = false;
           motorSpeed = false;
           effMute = false;
-          if (BUSE && blynkConnSt) {
-            //xSemaphoreTake(wifi_mutex, portMAX_DELAY);
-            Blynk.virtualWrite(V0, 0);
-            //xSemaphoreGive(wifi_mutex);
-          }
+          if (BUSE && blynkConnSt) blynkV0Pending = 0;   // sendet der Blynk-Task
           Serial.println("Rise STOP");
           crm.webUpdate("STATUS", workState());
           crm.webNotif("i", lng(L_LIFT_STOP), 5);

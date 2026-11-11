@@ -1,4 +1,16 @@
 
+// Löscht einen Task, der den wifi_mutex benutzt (Blynk, DS18B20).
+// Erst den Mutex holen: würde der Task gelöscht, während er ihn hält,
+// bliebe der Mutex für immer belegt (API, Temperatur, Blynk hängen).
+void deleteMutexTask(TaskHandle_t &h) {
+  if (h == NULL) return;
+  xSemaphoreTake(wifi_mutex, portMAX_DELAY);
+  vTaskDelete(h);
+  h = NULL;
+  xSemaphoreGive(wifi_mutex);
+}
+
+
 void update() {
   byte mLEDold = mLED, C1old = C1, C2old = C2, C3old = C3, SVOLold = SVOL,
        EQold = EQ, SINVold = SINV;
@@ -98,44 +110,42 @@ void update() {
     }
   }
   if (USEPM && PUMPM && !OLD && task_pump_handle == NULL) {
-    xTaskCreate(task_pump, "task_pump", 3000+5000, NULL, 1, &task_pump_handle);
+    xTaskCreate(task_pump, "task_pump", 5000, NULL, 1, &task_pump_handle);
     if (task_waterSensRead == NULL) {
       USEWS = true;
       crm.webUpdate("USEWS", "true");
       crm.var("USEWS", "true", false);
-      xTaskCreate(waterSensRead, "waterSensRead", 3000+5000, NULL, 1, &task_waterSensRead);
+      xTaskCreate(waterSensRead, "waterSensRead", 5000, NULL, 1, &task_waterSensRead);
     }
   } else if ((!USEPM || !PUMPM || OLD) && task_pump_handle != NULL) {
     vTaskDelete(task_pump_handle);
     task_pump_handle = NULL;
   }
-  if ((VTIN || VTOUT) && ds18_read_handle == NULL) xTaskCreatePinnedToCore(ds18_read, "ds18_read", 5000+5000, NULL, 1, &ds18_read_handle, 0);
+  if ((VTIN || VTOUT) && ds18_read_handle == NULL) xTaskCreatePinnedToCore(ds18_read, "ds18_read", 8000, NULL, 1, &ds18_read_handle, 0);
   else if (!VTIN && !VTOUT && ds18_read_handle != NULL) {
-    vTaskDelete(ds18_read_handle);
-    ds18_read_handle = NULL;
+    deleteMutexTask(ds18_read_handle);
   }
-  if (BUSE && blynk_start_task == NULL) xTaskCreatePinnedToCore(blynk_start, "blynk_start", 6500+5000, NULL, 1, &blynk_start_task, 0);
+  if (BUSE && blynk_start_task == NULL) xTaskCreatePinnedToCore(blynk_start, "blynk_start", 7000, NULL, 1, &blynk_start_task, 0);
   else if (!BUSE && blynk_start_task != NULL) {
-    vTaskDelete(blynk_start_task);
-    blynk_start_task = NULL;
+    deleteMutexTask(blynk_start_task);
   }
-  if (TGUSE && telegram_task == NULL) xTaskCreatePinnedToCore(telegram, "telegram", 10000+5000, NULL, 1, &telegram_task, 0);
+  if (TGUSE && telegram_task == NULL) xTaskCreatePinnedToCore(telegram, "telegram", 10000, NULL, 1, &telegram_task, 0);
   else if (!TGUSE && telegram_task != NULL) {
     vTaskDelete(telegram_task);
     telegram_task = NULL;
   }
-  if (LFLASH && ledFlash_task == NULL) xTaskCreatePinnedToCore(ledFlash, "ledFlash", 4000+5000, NULL, 1, &ledFlash_task, 1);
+  if (LFLASH && ledFlash_task == NULL) xTaskCreatePinnedToCore(ledFlash, "ledFlash", 5000, NULL, 1, &ledFlash_task, 1);
   else if (!LFLASH && ledFlash_task != NULL) {
     vTaskDelete(ledFlash_task);
     ledFlash_task = NULL;
   }
-  if (USERF && rfControl_task == NULL) xTaskCreatePinnedToCore(rfControl, "rfControl", 6500+5000, NULL, 1, &rfControl_task, 0);
+  if (USERF && rfControl_task == NULL) xTaskCreatePinnedToCore(rfControl, "rfControl", 7000, NULL, 1, &rfControl_task, 0);
   else if (!USERF && rfControl_task != NULL) {
     vTaskDelete(rfControl_task);
     rfControl_task = NULL;
   }
 
-  if (CHUDT && metric_task == NULL) xTaskCreatePinnedToCore(metricRun, "UpdateChecker", 6000+5000, NULL, 1, &metric_task, tskNO_AFFINITY);
+  if (CHUDT && metric_task == NULL) xTaskCreatePinnedToCore(metricRun, "UpdateChecker", 8000, NULL, 1, &metric_task, tskNO_AFFINITY);
   else if (!CHUDT && metric_task != NULL) {
     vTaskDelete(metric_task);
     metric_task = NULL;
@@ -147,12 +157,16 @@ void update() {
     else mqttInit(0);
   }
 
-  //Время, дата, ночное охлаждение
+  //Uhrzeit, Datum, Night Cooling
   TOPN = timeStrToMin(crm.var("TOPN"));
   TCSE = timeStrToMin(crm.var("TCSE"));
   TGIST = crm.var("TGIST").toInt();
   TMOVE = crm.var("TMOVE").toInt();
   WTHR = crm.var("WTHR") == "true";
+  // Wetterabfrage läuft in eigenem Task (früher blockierend in loop()).
+  // Der Task wird nie gelöscht (sonst Abbruch mitten in einer HTTP-Anfrage);
+  // weatherRun() tut nichts, solange WTHR/VTIN/VTOUT aus sind.
+  if (WTHR && weather_task == NULL) xTaskCreatePinnedToCore(weatherTask, "weather", 10000, NULL, 1, &weather_task, 0);
   WSPD = crm.var("WSPD").toFloat();
   bool _NCOOL = NCOOL;
   NCOOL = crm.var("NCOOL") == "true";
@@ -164,7 +178,9 @@ void update() {
     }
   }
   int _TZ = TZ;
+  bool _DSTEU = DSTEU;
   TZ = crm.var("TZ").toInt();
-  if (_TZ != TZ) setTimeZone(-60 * TZ);
+  DSTEU = crm.var("DSTEU") == "true";
+  if (_TZ != TZ || _DSTEU != DSTEU) applyTimeZone();
 
 }

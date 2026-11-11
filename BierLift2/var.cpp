@@ -44,6 +44,7 @@ void CRMui3::var(const String &name, uint32_t value, bool save) {
 }
 
 void CRMui3::var(const String &name, char value, bool save) {
-  cfg[name] = value;
+  String v(value);
+  cfg[name] = v;
   var_auto_save(save);
 }

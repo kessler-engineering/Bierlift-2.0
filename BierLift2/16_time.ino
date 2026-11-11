@@ -7,37 +7,67 @@ void timeInit() {
 
 
 
+// Läuft als Ticker-Callback (esp_timer-Task): hier nicht blockieren.
+// Früher stand hier delay(3000), das hielt alle Ticker (MQTT-Reconnect, Night Cooling) auf.
 void timeSync() {
   uint32_t pause = 86400000UL;
   auto s = WiFi.status();
   if (s == WL_CONNECTED) {
-    Serial.println(F("[CLOCK] Синхронизация с NTP"));
-    configTime(TZ * 60, 0, "pool.ntp.org", "time.nist.gov");
-    delay(3000);
-    if (TD.tm_year < 120) pause = 7000UL;
+    struct tm now;
+    if (!getLTime(&now)) {
+      Serial.println(F("[CLOCK] NTP sync"));
+      if (DSTEU) configTzTime(tzStringEU().c_str(), "pool.ntp.org", "time.nist.gov");
+      else configTime(TZ * 60, 0, "pool.ntp.org", "time.nist.gov");
+      pause = 7000UL;                   // in 7 s prüfen, ob die Zeit da ist
+    }
+    // Zeit vorhanden: SNTP gleicht selbstständig nach, nächste Prüfung in 24 h
   } else pause = 5000UL;
   timeSyncTicker.once_ms(pause, timeSync);
+}
+
+
+// POSIX-Zeitzone mit EU-Sommerzeitregel (letzter Sonntag März/Oktober, 01:00 UTC).
+// TZ = Abstand der Winterzeit zu UTC in Minuten (Deutschland: 60).
+String tzStringEU() {
+  int m = abs(TZ);
+  char off[12];
+  // POSIX: Vorzeichen umgekehrt (UTC+1 -> "-1")
+  if (m % 60) snprintf(off, sizeof(off), "%c%d:%02d", (TZ > 0 ? '-' : '+'), m / 60, m % 60);
+  else snprintf(off, sizeof(off), "%c%d", (TZ > 0 ? '-' : '+'), m / 60);
+  int startH = 1 + TZ / 60;             // 01:00 UTC in Winterzeit
+  int endH = 2 + TZ / 60;               // 01:00 UTC in Sommerzeit
+  char tz[48];
+  snprintf(tz, sizeof(tz), "STD%sDST,M3.5.0/%d,M10.5.0/%d", off, startH, endH);
+  return String(tz);
+}
+
+
+void applyTimeZone() {
+  if (DSTEU) {
+    setenv("TZ", tzStringEU().c_str(), 1);
+    tzset();
+  } else setTimeZone(-60 * TZ);
 }
 
 
 void timeTic() {
   if (VTIN && VTOUT && getLTime(&TD)) {
     if (nCoolStatus) {
-      // Закрытие
+      // Schließen (Lift herunterfahren)
       if (checkTimePeriod(TOPN, TCSE) == false ||
           Tin == -127 || Tout == -127 ||
           Tin <= Tout ||
-          (WTHR ? (weather.R || weather.W > WSPD) : false)) {
+          (WTHR ? (!weatherValid() || weather.R || weather.W > WSPD) : false)) {   // ohne aktuelle Wetterdaten lieber schließen
         nCoolStatus = false;
         effMute = true;
         releyAction(-1);
       }
     } else {
-      // Открытие
+      // Öffnen (Lift kurz anheben)
       if (checkTimePeriod(TOPN, TCSE) &&
           Tin != -127 && Tout != -127 &&
           (Tin - Tout >= TGIST) &&
-          (WTHR ? (weather.R == false && weather.W <= WSPD) : true)) {
+          (WTHR ? (weatherValid() && weather.R == false && weather.W <= WSPD) : true)) {   // nur mit aktuellen Wetterdaten öffnen
         if (lift_position) nCoolStatus = true;
         else {
           effMute = true;
@@ -69,8 +99,8 @@ bool getLTime(struct tm * info) {
 
 
 
-void setTimeZone(long offset) { //sec
-  int daylight = 0; //зимнее время
+void setTimeZone(long offset) { //Sekunden
+  int daylight = 0; //Winterzeit (ohne Sommerzeit-Verschiebung)
   char cst[17] = {0};
   char cdt[17] = "DST";
   char tz[33] = {0};
@@ -149,14 +179,14 @@ uint32_t timeStrToMin(const String & t) {
 
 
 /*
-  TD.tm_sec           // seconds of minutes from 0 to 61
-  TD.tm_min           // minutes of hour from 0 to 59
-  TD.tm_hour          // hours of day from 0 to 24
+  TD.tm_sec           // Sekunden 0 bis 61
+  TD.tm_min           // Minuten 0 bis 59
+  TD.tm_hour          // Stunden 0 bis 23
 
-  TD.tm_mday          // day of month from 1 to 31
-  TD.tm_mon + 1       // month of year from 0 to 11
-  TD.tm_year + 1900   // year since 1900
-  TD.tm_wday          // days since sunday
-  TD.tm_yday          // days since January 1st
-  TD.tm_isdst         // hours of daylight savings time
+  TD.tm_mday          // Tag im Monat 1 bis 31
+  TD.tm_mon + 1       // Monat 0 bis 11
+  TD.tm_year + 1900   // Jahre seit 1900
+  TD.tm_wday          // Wochentag, Sonntag = 0
+  TD.tm_yday          // Tag im Jahr seit 1. Januar
+  TD.tm_isdst         // Sommerzeit-Kennzeichen
 */

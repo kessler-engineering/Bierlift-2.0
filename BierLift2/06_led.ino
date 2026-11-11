@@ -70,24 +70,24 @@ uint32_t getPixColor(uint16_t thisPixel) {
   return (((uint32_t)leds[thisPixel].r << 16) | ((long)leds[thisPixel].g << 8 ) | (long)leds[thisPixel].b);
 }
 
-//********************* Е Ф Ф Е К Т Ы ***********************
+//********************* E F F E K T E ***********************
 //https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/
 byte hue = 0;
 CRGBPalette16 gPal;
 
-//Радуга
+//Regenbogen
 void rainbow() {
   //fill_rainbow(leds, LEDN, (INV ? hue++ : hue--), 255 / LEDN);
   fill_rainbow(leds, LEDN, (INV ? hue++ : hue--), PARAM);
   FastLED.setTemperature(OvercastSky);
 }
 
-//Цвета
+//Farbwechsel
 void colors() {
   setAll(CHSV((INV ? hue++ : hue--), 255, 255));
 }
 
-//Конфетти
+//Konfetti
 void sparkles() {
   //fadeToBlackBy(leds, LEDN, 255 / LEDN);
   fadeToBlackBy(leds, LEDN, PARAM);
@@ -95,7 +95,7 @@ void sparkles() {
   if (getPixColor(thisNum) == 0) leds[thisNum] = CHSV(random(0, 255), 255, 255);
 }
 
-//Блеск
+//Glitzern
 void Glitter() {
   //FastLED.clear();
   //fadeToBlackBy(leds, LEDN, 40);
@@ -108,7 +108,7 @@ void Glitter() {
   }
 }
 
-//Огонь
+//Feuer
 void FireModeChange(byte fm) {
   switch (fm) {
     case 6: gPal = CRGBPalette16(CRGB::Black, CRGB::Orange, CRGB(255, 200, 0), CRGB(255, 100, 0)); break;
@@ -142,7 +142,7 @@ void fire(bool revers) {
   }
 }
 
-//Огонек
+//Lauflicht (Sinelon)
 void sinelon() {
   //fadeToBlackBy(leds, LEDN, 500 / LEDN);
   fadeToBlackBy(leds, LEDN, PARAM);
@@ -150,7 +150,7 @@ void sinelon() {
   leds[pos] += CHSV((INV ? hue++ : hue--), 255, 192);
 }
 
-//
+//Schneeglitzern
 void snowSparkle() {
   FastLED.clear();
   for (uint16_t i = 0; i < LEDN; i++) {
@@ -161,7 +161,7 @@ void snowSparkle() {
 }
 
 
-//********** On board led indication *************
+//********** Statusanzeige über die blaue LED am ESP32 *************
 void ledFlash(void *pvParameters) {
   int kucha = uxTaskGetStackHighWaterMark(NULL);
   pinMode(LED_ONBOARD_PIN, OUTPUT);
@@ -189,7 +189,7 @@ void ledFlash(void *pvParameters) {
       ledFlashAct(100);
       ledFlashAct(100);
     }
-    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //TEST
+    if (kucha > uxTaskGetStackHighWaterMark(NULL))                //Test: Stack-Reserve des Tasks melden
       Serial.println("[HEAP] ledFlash: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
 }

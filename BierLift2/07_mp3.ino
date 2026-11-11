@@ -8,7 +8,7 @@ void df_init() {
       Serial.println("[AUDIO] 1.Please recheck the connection!");
       Serial.println("[AUDIO] 2.Please insert the SD card!");
     } else {
-      dfPlayer.setTimeOut(100);   //Set serial communictaion time out 500ms
+      dfPlayer.setTimeOut(100);   //Timeout der seriellen Verbindung zum MP3-Player: 100 ms
       dfPlayer.stop();
       dfPlayer.volume(SVOL);
       dfPlayer.EQ(EQ);

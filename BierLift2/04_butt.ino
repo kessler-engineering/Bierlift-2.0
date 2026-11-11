@@ -6,6 +6,7 @@ void button_hw() {
       crm.webNotif("i", lng(L_RESET), 5);
       tgNotif(lng(L_RESET));
       mqttSend("s", lng(L_RESET));
+      tgFlush(3000);
       crm.cfgDelete();
     }
 
@@ -34,6 +35,7 @@ void button_hw() {
       crm.webNotif("i", lng(L_NOTIF_REBOOT), 5);
       tgNotif(lng(L_NOTIF_REBOOT));
       mqttSend("s", lng(L_NOTIF_REBOOT));
+      tgFlush(3000);
       crm.espReboot();
     }
   }
@@ -144,5 +146,6 @@ void REBOOT() {
   crm.webNotif("i", lng(L_NOTIF_REBOOT), 3);
   tgNotif(lng(L_NOTIF_REBOOT));
   mqttSend("s", lng(L_NOTIF_REBOOT));
+  tgFlush(3000);
   crm.espReboot();
 }

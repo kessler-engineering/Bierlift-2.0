@@ -165,4 +165,7 @@ class CRMui3 {
     void var_auto_save(bool save);
 
     String _btnui = String();
+
+    bool isSecretKey(const String &key);
+    void serializeCfgMasked(String &out);
 };

@@ -1,10 +1,10 @@
 #ifndef CRMbutton_h
 #define CRMbutton_h
 
-#define _EB_DEB 50      // дебаунс кнопки
-#define _EB_HOLD 1000   // таймаут удержания кнопки
-#define _EB_STEP 500    // период срабатывания степ
-#define _EB_CLICK 500	  // таймаут накликивания
+#define _EB_DEB 50      // Entprellzeit
+#define _EB_HOLD 1000   // Zeit bis "gehalten"
+#define _EB_STEP 500    // Intervall der Step-Signale bei gehaltener Taste
+#define _EB_CLICK 500	  // Zeitfenster für Mehrfachklicks
 
 #include <Arduino.h>
 #define _setFlag(x) (flags |= 1 << x)
@@ -30,44 +30,44 @@ class CRMbutton {
     void run() {
       uint32_t thisMls = millis();
       uint32_t debounce = thisMls - _debTimer;
-      if (!digitalRead(S1)) {                                                	// кнопка нажата
-        if (!_readFlag(3)) {                                          	// и не была нажата ранее
-          if (debounce > EB_DEB) {                                   	// и прошел дебаунс
-            _setFlag(3);                                            // флаг кнопка была нажата
-            _debTimer = thisMls;                                    // сброс таймаутов
-            CBState = 0;                                           	// сброс состояния
+      if (!digitalRead(S1)) {                                                	// Taste gedrückt
+        if (!_readFlag(3)) {                                          	// und vorher nicht gedrückt
+          if (debounce > EB_DEB) {                                   	// und Entprellzeit abgelaufen
+            _setFlag(3);                                            // Flag: Taste wurde gedrückt
+            _debTimer = thisMls;                                    // Timer zurücksetzen
+            CBState = 0;                                           	// Zustand zurücksetzen
           }
-          if (debounce > EB_CLICK) {									// кнопка нажата после EB_CLICK
-            clicks = 0;												// сбросить счётчик и флаг кликов
+          if (debounce > EB_CLICK) {									// Taste erst nach EB_CLICK erneut gedrückt
+            clicks = 0;												// Klickzähler und Klick-Flag zurücksetzen
             flags &= ~0b01100000;
           }
-        } else {                                                      	// кнопка уже была нажата
-          if (!_readFlag(4)) {                                        // и удержание ещё не зафиксировано
-            if (debounce < EB_HOLD) {                              	// прошло меньше удержания
-              if (CBState != 0) _setFlag(2);                     	// но энкодер повёрнут! Запомнили
-            } else {                                                // прошло больше времени удержания
-              if (!_readFlag(2)) {                                // и энкодер не повёрнут
-                CBState = 6;                                   	// значит это удержание (сигнал)
-                _setFlag(4);                                    // запомнили что удерживается
-                _debTimer = thisMls;                            // сброс таймаута
+        } else {                                                      	// Taste war schon gedrückt
+          if (!_readFlag(4)) {                                        // und Halten noch nicht erkannt
+            if (debounce < EB_HOLD) {                              	// Haltezeit noch nicht erreicht
+              if (CBState != 0) _setFlag(2);                     	// aber Encoder gedreht – merken (für Taster ohne Bedeutung)
+            } else {                                                // Haltezeit überschritten
+              if (!_readFlag(2)) {                                // und Encoder nicht gedreht
+                CBState = 6;                                   	// also: gehalten (Signal)
+                _setFlag(4);                                    // merken, dass gehalten wird
+                _debTimer = thisMls;                            // Timer zurücksetzen
               }
             }
-          } else {                                                    // удержание зафиксировано
-            if (debounce > EB_STEP) {                              	// таймер степа
-              CBState = 7;                                       	// сигналим
-              _debTimer = thisMls;                                // сброс таймаута
+          } else {                                                    // Halten erkannt
+            if (debounce > EB_STEP) {                              	// Step-Timer
+              CBState = 7;                                       	// Signal ausgeben
+              _debTimer = thisMls;                                // Timer zurücksetzen
             }
           }
         }
-      } else {                                                        	// кнопка не нажата
-        if (_readFlag(3)) {                                           	// но была нажата
-          if (debounce > EB_DEB && !_readFlag(4) && !_readFlag(2)) {	// энкодер не трогали и не удерживали - это клик
+      } else {                                                        	// Taste nicht gedrückt
+        if (_readFlag(3)) {                                           	// war aber gedrückt
+          if (debounce > EB_DEB && !_readFlag(4) && !_readFlag(2)) {	// nicht gedreht und nicht gehalten – also ein Klick
             CBState = 5;
             clicks++;
           }
-          flags &= ~0b00011100;                                       // clear 2 3 4
-          _debTimer = thisMls;                                        // сброс таймаута
-        } else if (clicks > 0 && debounce > EB_CLICK && !_readFlag(5)) flags |= 0b01100000;	 // флаг на клики
+          flags &= ~0b00011100;                                       // Flags 2, 3, 4 löschen
+          _debTimer = thisMls;                                        // Timer zurücksetzen
+        } else if (clicks > 0 && debounce > EB_CLICK && !_readFlag(5)) flags |= 0b01100000;	 // Flag: Klickserie abgeschlossen
       }
     }
 

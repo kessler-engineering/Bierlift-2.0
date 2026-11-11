@@ -1,31 +1,30 @@
 /*
-  Управление лифтом
-  [Prefix/]BierLift/a                - ВВЕРХ_2x = 2; ВВЕРХ = 1; СТОП = 0; ВНИЗ = -1; ВНИЗ_2x = -2
+  MQTT-Topics ([Präfix/] ist optional, Einstellung "Präfix", endet mit "/")
 
-  Температура
-  [Prefix/]BierLift/t                - Ответ в топик .../s
+  Empfangen (Befehle an den Lift; retained-Nachrichten werden ignoriert):
+  [Präfix/]BierLift/a          - Fahren: 2 = schnell hoch, 1 = hoch, 0 = Stopp, -1 = runter, -2 = schnell runter
+  [Präfix/]BierLift/t          - leere Nachricht: Temperaturen als Text an .../t senden
+  [Präfix/]BierLift/s          - leere Nachricht: Status als Text an .../s senden
+  [Präfix/]BierLift/chprot     - Kindersicherung: 1 = ein, 0 = aus
+  [Präfix/]BierLift/gpio22     - Development-Pin 22: 1 = HIGH, 0 = LOW (nur wenn Pin aktiviert)
+  [Präfix/]BierLift/gpio25     - Development-Pin 25: 1 = HIGH, 0 = LOW
+  [Präfix/]BierLift/gpio26     - Development-Pin 26: 1 = HIGH, 0 = LOW
 
-  Статус
-  [Prefix/]BierLift/s                - Запрос должен быть пустым.
-
-  Детская защита
-  [Prefix/]BierLift/chprot           - 1 = Enable, 0 = Disable
-
-  Пин22
-  [Prefix/]BierLift/gpio22            - 1 = HIGH, 0 = LOW
-  Пин25
-  [Prefix/]BierLift/gpio25            - 1 = HIGH, 0 = LOW
-  Пин26
-  [Prefix/]BierLift/gpio26            - 1 = HIGH, 0 = LOW
-
-
+  Senden (vom Lift, retained):
+  [Präfix/]BierLift/s          - Status- und Ereignismeldungen (Text)
+  [Präfix/]BierLift/t/in       - Temperatur innen, °C
+  [Präfix/]BierLift/t/out      - Temperatur außen, °C
+  [Präfix/]BierLift/w          - Wasserstand: 1 = hoch, 0 = niedrig
 */
 
 
-char* strToChr(String s) {
-  char* S = new char[s.length() + 1];
-  strcpy(S, s.c_str());
-  return S;
+// AsyncMqttClient speichert für Server/Login/Passwort nur Zeiger – die Strings müssen
+// also dauerhaft leben. Früher wurde dafür bei jedem (Re-)Connect neuer Speicher
+// reserviert und nie freigegeben (Speicherleck). Jetzt feste Puffer.
+static String mqHost, mqUser, mqPass;
+
+String mqttBaseTopic() {
+  return crm.var("MQTP") + BL_NAME;
 }
 
 
@@ -39,6 +38,13 @@ void OnMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
     data += payload[i];
   }
   SPLN("\": " + data);
+
+  // Gespeicherte (retained) Nachrichten nie als Befehl ausführen: ein retained "1" auf /a
+  // ließe den Lift sonst nach jedem Neustart/Reconnect hochfahren.
+  if (properties.retain) {
+    SPLN(F("[MQTT] Retained message ignored."));
+    return;
+  }
 
   if (t == (tt + "/a")) {
     releyAction(data.toInt());
@@ -61,7 +67,7 @@ void OnMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
 void onMqttConnect(bool sessionPresent) {
   SPLN("[MQTT] Connected to " + crm.var("MQSRV"));
-  mqttClient.subscribe(strToChr(crm.var("MQTP") + BL_NAME + "/#"), 1);
+  mqttClient.subscribe((mqttBaseTopic() + "/#").c_str(), 1);   // Topic wird beim Aufruf kopiert
   SPLN("[MQTT] Subscribe on \"" + crm.var("MQTP") + BL_NAME + "/#\", QoS: 1");
   mqttSend("s", lng(L_TELEGA_ONLINE));
 }
@@ -80,15 +86,20 @@ void mqttInit(bool a) {
       mqttClient.onMessage(OnMqttMessage);
       mqttClient.onConnect(onMqttConnect);
       mqttClient.onDisconnect(onMqttDisconnect);
-      String id = crm.uint64ToString(ESP.getEfuseMac());
+      // static: der Client speichert nur den Zeiger (vorher zeigte er auf einen gelöschten String)
+      static String id = crm.uint64ToString(ESP.getEfuseMac());
       mqttClient.setClientId(id.c_str());
     }
     //mqttClient.setWill(strToChr(crm.var("MQTP") + BL_NAME + "/s"), 1, false, "BierLift offline");
-    mqttClient.setCredentials(strToChr(crm.var("MQLG")), strToChr(crm.var("MQPW")));
-    mqttClient.setServer(strToChr(crm.var("MQSRV")), crm.var("MQPRT").toInt());
+    // Nur hier setzen, wenn der Client getrennt ist (sonst könnten alte Zeiger ungültig werden).
+    mqHost = crm.var("MQSRV");
+    mqUser = crm.var("MQLG");
+    mqPass = crm.var("MQPW");
+    mqttClient.setCredentials(mqUser.c_str(), mqPass.c_str());
+    mqttClient.setServer(mqHost.c_str(), crm.var("MQPRT").toInt());
     mqttConnect();
   } else {
-    mqttClient.unsubscribe(strToChr(crm.var("MQTP") + BL_NAME + "/#"));
+    mqttClient.unsubscribe((mqttBaseTopic() + "/#").c_str());
     mqttTick.detach();
     mqttClient.disconnect(true);
     mqttClient.clearQueue();
@@ -117,16 +128,16 @@ void mqttSend(String t, String d) {
 /*String topic_dicr() {
   String pt = crm.var("MQTP") + BL_NAME + "/";
 
-  String t = "Управление лифтом: <b style='color:#0f0;'>";
+  String t = "Lift steuern: <b style='color:#0f0;'>";
   t += pt + "a</b><br>";
-  t += "ВВЕРХ1 = 2; ВВЕРХ = 1; СТОП = 0; ВНИЗ = -1; ВНИЗ2 = -2<br><br>";
+  t += "SCHNELL HOCH = 2; HOCH = 1; STOPP = 0; RUNTER = -1; SCHNELL RUNTER = -2<br><br>";
 
-  t += "Температура: <b style='color:#0f0;'>";
+  t += "Temperatur: <b style='color:#0f0;'>";
   t += pt + "t</b><br>";
-  t += "Ответ в топик .../s<br><br>";
+  t += "Antwort im Topic .../t<br><br>";
 
-  t += "Статус: <b style='color:#0f0;'>";
+  t += "Status: <b style='color:#0f0;'>";
   t += pt + "s</b><br>";
-  t += "Запрос должен быть пустым.";
+  t += "Anfrage muss leer sein.";
   return t;
   }*/
