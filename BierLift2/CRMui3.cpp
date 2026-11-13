@@ -2,8 +2,7 @@
 
 #include "web_index.html.h"
 #include "web_rf.html.h"
-#include "web_script.js.h"
-#include "web_style.css.h"
+#include "web_gz.h"            // script.js und style.css gzip-gepackt (Quelle: web_script.js.h, web_style.css.h)
 #include "web/notif.js.h"
 #include "web/notif.css.h"
 //#include "web/chart.js.h"
@@ -16,6 +15,51 @@
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 DNSServer dnsServer;
+
+#define WEB_ETAG "\"" CRM_VER "\""
+#define CACHE_REVALIDATE "no-cache"                              // behalten, aber jedes Mal kurz nachfragen
+#define CACHE_FOREVER    "public, max-age=31536000, immutable"   // behalten, nie nachfragen (1 Jahr)
+
+// Feste Datei ausliefern (siehe "Seitendateien" in http()).
+// forever = true: Der Browser behält die Datei ohne Nachfrage. Nur für Adressen, die sich bei
+// jeder Firmware-Version ändern (…?v=CRM_VER, gesetzt von indexHtml()) oder deren Inhalt sich
+// nie ändert (Schriften, Icons – bei einer Änderung dort die Adresse ändern!).
+void CRMui3::sendStatic(AsyncWebServerRequest *request, const String &type, const uint8_t *data, size_t len, bool gz, bool forever) {
+  if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
+    return request->requestAuthentication();
+  const __FlashStringHelper *cc = forever ? F(CACHE_FOREVER) : F(CACHE_REVALIDATE);
+  if (request->hasHeader("If-None-Match") && request->header("If-None-Match") == WEB_ETAG) {
+    AsyncWebServerResponse *r = request->beginResponse(304);
+    r->addHeader(F("ETag"), F(WEB_ETAG));
+    r->addHeader(F("Cache-Control"), cc);
+    request->send(r);
+    return;
+  }
+  AsyncWebServerResponse *r = request->beginResponse_P(200, type, data, len);
+  if (gz) r->addHeader(F("Content-Encoding"), F("gzip"));
+  r->addHeader(F("ETag"), F(WEB_ETAG));
+  r->addHeader(F("Cache-Control"), cc);
+  request->send(r);
+}
+
+// true, wenn die Datei mit der aktuellen Version in der Adresse angefragt wurde (…?v=CRM_VER)
+static bool versionedUrl(AsyncWebServerRequest *request) {
+  return request->hasParam("v") && request->getParam("v")->value() == CRM_VER;
+}
+
+// Startseite: hängt an die eingebundenen Dateien die Firmware-Version an (…?v=CRM_VER).
+// Dadurch darf der Browser sie dauerhaft behalten und lädt sie nach einem Update neu.
+// Beim Öffnen fragt er dann nur noch die Startseite (304) und /ui ab statt 7 Dateien –
+// Browser öffnen höchstens 6 Verbindungen gleichzeitig, mehr verkraftete der ESP schlecht.
+static String indexHtml() {
+  String s = FPSTR(index_html);
+  const char *files[] = {"notif.css", "style.css", "notif.js", "script.js", "icon-192x192.png", "manifest.json"};
+  for (const char *f : files) {
+    String a = String("\"") + f + "\"";
+    s.replace(a, String("\"") + f + "?v=" CRM_VER "\"");
+  }
+  return s;
+}
 
 
 // Geheime Konfigurationswerte, die nie an den Browser oder in die Backup-Datei gehen.
@@ -89,8 +133,19 @@ void CRMui3::run() {
   if (millis() - _runTimer >= 1000) {
     _runTimer = millis();
     _upTime++;
-    if (_wifiMode > 1) dnsServer.processNextRequest();
+    // WiFiUDP::parsePacket() (im DNS-Server) fordert bei jedem Aufruf 1,4 KB mit new[] an.
+    // Ist der Speicher knapp (z. B. während einer TLS-Verbindung), wirft new eine Ausnahme ->
+    // ohne Abfangen abort() und Neustart (12.11.2026: alle ≈2 min auf ESP .64). Jetzt fällt nur
+    // diese eine DNS-Anfrage aus.
+    if (_wifiMode > 1) {
+      try {
+        dnsServer.processNextRequest();
+      } catch (...) {
+        SPLN(F("[DNS] Out of memory - request skipped"));
+      }
+    }
     cfgAutoSave();
+    wifiCheck();   // Heimnetz verloren oder nie verbunden -> regelmäßig neu verbinden
     if (_sendingToWeb) {
       _sendingToWeb = webConnCountStatus();
       if (WiFi.getMode() == 2 && !WiFi.softAPgetStationNum()) _sendingToWeb = false;
@@ -181,8 +236,11 @@ void CRMui3::http() {
     _buf += F("],\"cfg\":");
     serializeCfgMasked(_buf);
     _buf += "}";
-    if (_buf.length() > 7000) request->send_P(200, F("application/json"), _buf.c_str());
-    else request->send(200, F("application/json"), _buf);
+    // Immer als Kopie senden. Früher ab 7000 Byte per send_P(_buf.c_str()) – send_P liest die
+    // Daten aber erst später stückweise, während _buf direkt danach geleert wurde: der Rest kam
+    // aus freigegebenem Speicher, die Übertragung stockte 15–30 s oder brach ab (/ui ist seit
+    // 2026.11 ≈7,2 KB groß; gemessen 12.11.2026).
+    request->send(200, F("application/json"), _buf);
     _buf = String();
   });
 
@@ -345,92 +403,63 @@ void CRMui3::http() {
 
 
   // ********** Seitendateien **********
+  // Alle festen Dateien laufen über sendStatic(): Versionskennung (ETag = CRM_VER) und
+  // "Cache-Control: no-cache" -> der Browser behält die Dateien und fragt nur kurz nach,
+  // ob sie noch aktuell sind (Antwort 304 ohne Inhalt). Nach einem Firmware-Update ändert
+  // sich die Kennung und alles wird einmal neu geladen. Früher wurden bei jedem Öffnen
+  // ≈130 KB übertragen.
+  // script.js und style.css werden gzip-gepackt ausgeliefert (web_gz.h, erzeugt von
+  // tools/web_gzip.py aus web_script.js.h / web_style.css.h).
   server.on("/", HTTP_ANY, [this](AsyncWebServerRequest * request) {
     if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
       return request->requestAuthentication();
-    request->send_P(200, F("text/html"), index_html);
+    if (request->hasHeader("If-None-Match") && request->header("If-None-Match") == WEB_ETAG) {
+      AsyncWebServerResponse *r = request->beginResponse(304);
+      r->addHeader(F("ETag"), F(WEB_ETAG));
+      r->addHeader(F("Cache-Control"), F(CACHE_REVALIDATE));
+      request->send(r);
+      return;
+    }
+    AsyncWebServerResponse *r = request->beginResponse(200, F("text/html"), indexHtml());
+    r->addHeader(F("ETag"), F(WEB_ETAG));
+    r->addHeader(F("Cache-Control"), F(CACHE_REVALIDATE));
+    request->send(r);
   });
 
   server.on("/rf", HTTP_ANY, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    request->send_P(200, F("text/html"), rf_html);
+    sendStatic(request, F("text/html"), (const uint8_t*)rf_html, strlen_P(rf_html), false, false);
   });
 
   server.on("/script.js", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    request->send_P(200, F("application/javascript"), script_js);
+    sendStatic(request, F("application/javascript"), script_js_gz, script_js_gz_size, true, versionedUrl(request));
   });
 
   server.on("/style.css", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    request->send_P(200, F("text/css"), style_css);
+    sendStatic(request, F("text/css"), style_css_gz, style_css_gz_size, true, versionedUrl(request));
   });
 
   server.on("/notif.js", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("application/javascript"), notif_js, notif_js_size);
-    response->addHeader(F("Content-Encoding"), F("gzip"));
-    request->send(response);
+    sendStatic(request, F("application/javascript"), notif_js, notif_js_size, true, versionedUrl(request));
   });
 
   server.on("/notif.css", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/css"), notif_css, notif_css_size);
-    response->addHeader(F("Content-Encoding"), F("gzip"));
-    request->send(response);
+    sendStatic(request, F("text/css"), notif_css, notif_css_size, true, versionedUrl(request));
   });
-
-  /*
-    Server.on("/chart.js", HTTP_GET, [this](AsyncWebServerRequest * request) {
-      if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-        return request->requestAuthentication();
-      AsyncWebServerResponse *response = request->beginResponse_P(200, F("application/javascript"), chart_js, chart_js_size);
-      response->addHeader(F("Content-Encoding"), F("gzip"));
-      request->send(response);
-    });
-  */
 
   server.on("/fonts/3ds.ttf", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("application/x-font-ttf"), font3ds_ttf, font3ds_ttf_size);
-    response->addHeader(F("Content-Encoding"), F("gzip"));
-    request->send(response);
+    sendStatic(request, F("application/x-font-ttf"), font3ds_ttf, font3ds_ttf_size, true, true);
   });
 
-  /*server.on("/fonts/font.ttf", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("application/x-font-ttf"), font_ttf, font_ttf_size);
-    response->addHeader(F("Content-Encoding"), F("gzip"));
-    request->send(response);
-    });*/
-
   server.on("/fonts/fonticon.woff2", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("font/woff2"), fonticon_woff2, fonticon_woff2_size);
-    request->send(response);
+    sendStatic(request, F("font/woff2"), fonticon_woff2, fonticon_woff2_size, false, true);
   });
 
   server.on("/favicon.ico", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("image/x-icon"), favicon_ico, favicon_ico_size);
-    request->send(response);
+    sendStatic(request, F("image/x-icon"), favicon_ico, favicon_ico_size, false, true);
   });
 
   server.on("/icon-192x192.png", HTTP_GET, [this](AsyncWebServerRequest * request) {
-    if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
-      return request->requestAuthentication();
-    AsyncWebServerResponse *response = request->beginResponse_P(200, F("image/png"), icon_192x192, icon_192x192_size);
-    response->addHeader(F("Content-Encoding"), F("gzip"));
-    request->send(response);
+    sendStatic(request, F("image/png"), icon_192x192, icon_192x192_size, true, true);
   });
 
   //https://webformyself.com/neskolko-sovetov-kotorye-sdelayut-pwa-na-ios-poxozhimi-na-rodnye-prilozheniya/
@@ -442,7 +471,9 @@ void CRMui3::http() {
     M += F("\",\"short_name\":\"");
     M += _app_name;
     M += F("\",\"icons\":[{\"src\":\"/icon-192x192.png\",\"sizes\":\"192x192\",\"type\":\"image/png\"}]}");
-    request->send(200, F("application/json"), M);
+    AsyncWebServerResponse *r = request->beginResponse(200, F("application/json"), M);
+    r->addHeader(F("Cache-Control"), versionedUrl(request) ? F(CACHE_FOREVER) : F(CACHE_REVALIDATE));
+    request->send(r);
   });
 
   server.on("/logout", HTTP_GET, [this](AsyncWebServerRequest * request) {

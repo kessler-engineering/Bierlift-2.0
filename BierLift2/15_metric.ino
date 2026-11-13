@@ -3,9 +3,18 @@
 
 void metricRun(void *pvParameters) {
   int kucha = uxTaskGetStackHighWaterMark(NULL);
+  // Erste Prüfung direkt nach dem WLAN-Verbinden, solange Telegram und Blynk noch warten
+  // (udtBootCheck). Neben deren TLS-Verbindungen reicht der Speicher für eine dritte nicht:
+  // 12g stürzte dabei ab, 12h/13a scheiterten mit "BIGNUM - Memory allocation failed"
+  // (ESP .64, 13.11.2026). Spätere Prüfungen laufen nur bei genug freiem Speicher.
+  uint32_t t0 = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 60000) vTaskDelay(500);
+  vTaskDelay(1000);
+  uint32_t t = checkUpdate();
+  udtBootCheck = false;
   for (;;) {
-    uint32_t t = checkUpdate();
     vTaskDelay(t);
+    t = checkUpdate();
     if (kucha > uxTaskGetStackHighWaterMark(NULL))                //Test: Stack-Reserve des Tasks melden
       Serial.println("[HEAP] UpdateChecker: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
@@ -33,12 +42,31 @@ void checkUpdateWebTask(void *pvParameters) {
 // auch Schreiben – jeder hätte allen Geräten ein "Update" melden können).
 String lastVerTag;
 
+// Mindestspeicher für die HTTPS-Abfrage (siehe checkUpdate()).
+// Gemessen 13.11.2026 auf ESP .64 (Telegram + Blynk aktiv): frei 109900, größter Block 33772
+// -> TLS scheiterte (-1). Mit 45 KB am Stück wird die Prüfung dort übersprungen statt einen
+// aussichtslosen Versuch zu starten, der kurzzeitig den ganzen Speicher belegt.
+// 13.11. erneut: frei 118372, Block 48396 -> TLS scheiterte trotzdem -> Schwelle 60 KB; die
+// eigentliche Prüfung läuft seit 13b beim Start vor Telegram/Blynk (siehe metricRun()).
+#define UDT_MIN_FREE_HEAP 70000
+#define UDT_MIN_BLOCK     60000
+
 uint32_t checkUpdate() {
   static volatile bool checkMutex = false;
   uint32_t delayInterval = 10000;
   if (!checkMutex && WiFi.status() == WL_CONNECTED) {
+    // Eine TLS-Verbindung braucht ≈40–50 KB. Laufen schon Telegram und Blynk, reicht der Speicher
+    // oft nicht – dann schlugen andere Speicheranforderungen fehl und der ESP startete neu
+    // (12.11.2026, ESP .64, alle ≈2 min). Zu wenig frei -> Prüfung auslassen, in 15 min erneut.
+    size_t freeHeap = ESP.getFreeHeap();
+    size_t maxBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    Serial.printf("\n[UDT_FW] Free heap %u, largest block %u\n", freeHeap, maxBlock);
+    if (freeHeap < UDT_MIN_FREE_HEAP || maxBlock < UDT_MIN_BLOCK) {
+      Serial.println(F("[UDT_FW] Not enough memory for TLS - check skipped"));
+      return 900000;                         // 15 min
+    }
     checkMutex = true;
-    Serial.println("\n[UDT_FW] Check update firmware...");
+    Serial.println("[UDT_FW] Check update firmware...");
 
     HTTPClient h;
     WiFiClientSecure *client = new WiFiClientSecure;

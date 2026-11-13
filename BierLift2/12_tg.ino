@@ -74,6 +74,11 @@ void telegram(void *pvParameters) {
   int kucha = uxTaskGetStackHighWaterMark(NULL);
   bool init = false;
   for (;;) {
+    // Beim Start zuerst die Update-Prüfung durchlassen (siehe udtBootCheck in 00_sett.h)
+    if (udtBootCheck && millis() < 90000) {
+      vTaskDelay(500);
+      continue;
+    }
     if (WiFi.status() == WL_CONNECTED) {
       if (init) {
         tg.tick();

@@ -9,17 +9,20 @@ void interface() {
   if (USEWS) crm.output({OUTPUT_TABL, "WATER", lng(L_WATER_LEVEL), waterState()});
   crm.output({OUTPUT_HR, "0", "20px"});
   if (OLD == false && HGSP == true) {
-    crm.input({INPUT_BUTTON, "UP2", "&#xe804;&#xe804;", "10px 25px", "", "49"});
-    crm.output({OUTPUT_HR, "0", "-25px 0"});
+    crm.input({INPUT_BUTTON, "UP2", "&#xe901;", "6px 44px", "", "50"});
+    crm.output({OUTPUT_HR, "0", "-15px 0"});   // gleicher Abstand wie zwischen den übrigen Knöpfen (13d)
   }
-  crm.input({INPUT_BUTTON, "UP1", "&#xe804;", "10px 48px 10px 52px", "", "45"});
+  // Steuerknöpfe (2026.11.13c): schlichte Winkel aus der Symbol-Schrift (U+E900–E904, erzeugt mit
+  // tools/font_icons.py). Alle Zeichen gleich breit -> gleiche Schriftgröße und Polsterung ergeben
+  // exakt gleich große Kacheln. Früher dicke Pfeile (U+E804/E805/E806) mit je eigener Polsterung.
+  crm.input({INPUT_BUTTON, "UP1", "&#xe900;", "6px 44px", "", "50"});
   crm.output({OUTPUT_HR, "0", "-15px 0"});
-  crm.input({INPUT_BUTTON, "STP", "&#xe806;", "3px 47px 3px 53px", "", "58"});
+  crm.input({INPUT_BUTTON, "STP", "&#xe902;", "6px 44px", "", "50"});
   crm.output({OUTPUT_HR, "0", "-15px 0"});
-  crm.input({INPUT_BUTTON, "DN1", "&#xe805;", "10px 48px 10px 52px", "", "45"});
+  crm.input({INPUT_BUTTON, "DN1", "&#xe903;", "6px 44px", "", "50"});
   if (OLD == false && HGSP == true) {
-    crm.output({OUTPUT_HR, "0", "-25px 0"});
-    crm.input({INPUT_BUTTON, "DN2", "&#xe805;&#xe805;", "10px 25px", "", "49"});
+    crm.output({OUTPUT_HR, "0", "-15px 0"});   // gleicher Abstand wie zwischen den übrigen Knöpfen (13d)
+    crm.input({INPUT_BUTTON, "DN2", "&#xe904;", "6px 44px", "", "50"});
   }
   if (DP22 && DP22C || DP25 && DP25C || DP26 && DP26C) {
     crm.output({OUTPUT_HR, "1px", "40px 20% -20px"});

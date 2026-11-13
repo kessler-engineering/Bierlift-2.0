@@ -168,4 +168,12 @@ class CRMui3 {
 
     bool isSecretKey(const String &key);
     void serializeCfgMasked(String &out);
+    void sendStatic(AsyncWebServerRequest *request, const String &type, const uint8_t *data, size_t len, bool gz, bool forever);
+
+    // WLAN-Wiederverbindung (siehe wifiCheck() in wi-fi.cpp)
+    void wifiCheck();
+    bool _staEverConnected = false;   // seit dem Start schon einmal mit dem Heimnetz verbunden
+    bool _staGaveUp = false;          // nie verbunden und Wartezeit abgelaufen -> nur noch selten versuchen
+    volatile bool _staHasIP = false;  // eigener Merker "im Heimnetz mit IP" (WiFi.status() ist nach Grund 2 falsch)
+    uint32_t _staRetryTimer = 0;
 };

@@ -1288,7 +1288,10 @@ void AsyncServer::begin(){
         return;
     }
 
-    static uint8_t backlog = 5;
+    // BierLiftOS-Anpassung 2026.11.12f: Warteschlange für neue Verbindungen 5 -> 12.
+    // Browser öffnen bis zu 6 Verbindungen gleichzeitig (+ WebSocket); die 6. wurde abgewiesen
+    // und erst nach 3–12 s (Windows-Wiederholung) angenommen -> Seite lud teils > 10 s.
+    static uint8_t backlog = 12;
     _pcb = _tcp_listen_with_backlog(_pcb, backlog);
     if (!_pcb) {
         log_e("listen_pcb == NULL");

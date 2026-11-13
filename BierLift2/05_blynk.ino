@@ -9,6 +9,11 @@ void blynk_start (void *pvParameters) {
   int kucha = uxTaskGetStackHighWaterMark(NULL);
   bool blynk_init = false;
   for (;;) {
+    // Beim Start zuerst die Update-Prüfung durchlassen (siehe udtBootCheck in 00_sett.h)
+    if (udtBootCheck && millis() < 90000) {
+      vTaskDelay(500);
+      continue;
+    }
     if (WiFi.status() == WL_CONNECTED) {
       xSemaphoreTake(wifi_mutex, portMAX_DELAY);
       if (!blynk_init) {
