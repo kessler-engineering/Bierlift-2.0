@@ -17,8 +17,9 @@ void ds18_read(void *pvParameters) {
     }
 
     ds18.requestTemperatures();
-    Tin =  median_t0(ds18.getTempCByIndex(TSWAP ? 0 : 1));
-    Tout =  median_t1(ds18.getTempCByIndex(TSWAP ? 1 : 0));
+    // Korrektur gleich hier verrechnen -> Anzeige, MQTT, Blynk, API und Night Cooling nutzen denselben Wert
+    Tin = tempCorr(median_t0(ds18.getTempCByIndex(TSWAP ? 0 : 1)), TOFFI);
+    Tout = tempCorr(median_t1(ds18.getTempCByIndex(TSWAP ? 1 : 0)), TOFFO);
     delay(100);
 
     if (BUSE && blynkConnSt) {
@@ -44,6 +45,12 @@ void ds18_read(void *pvParameters) {
     if (kucha > uxTaskGetStackHighWaterMark(NULL))                //Test: Stack-Reserve des Tasks melden
       Serial.println("[HEAP] Temp: " + String(kucha = uxTaskGetStackHighWaterMark(NULL)));
   }
+}
+
+
+// Sensorfehler (-127) bleibt unverändert, damit Anzeige und Night Cooling ihn weiter erkennen.
+float tempCorr(float t, float off) {
+  return (t == DEVICE_DISCONNECTED_C) ? t : t + off;
 }
 
 

@@ -2,9 +2,14 @@
 // Löscht einen Task, der den wifi_mutex benutzt (Blynk, DS18B20).
 // Erst den Mutex holen: würde der Task gelöscht, während er ihn hält,
 // bliebe der Mutex für immer belegt (API, Temperatur, Blynk hängen).
+// Ist der Mutex nach MUTEX_WAIT_TASK_DEL_MS noch belegt, bleibt der Task vorerst bestehen;
+// update() versucht es beim nächsten Speichern erneut (Handle bleibt gesetzt).
 void deleteMutexTask(TaskHandle_t &h) {
   if (h == NULL) return;
-  xSemaphoreTake(wifi_mutex, portMAX_DELAY);
+  if (xSemaphoreTake(wifi_mutex, pdMS_TO_TICKS(MUTEX_WAIT_TASK_DEL_MS)) != pdTRUE) {
+    Serial.println(F("[TASK] wifi_mutex busy, task not stopped yet"));
+    return;
+  }
   vTaskDelete(h);
   h = NULL;
   xSemaphoreGive(wifi_mutex);
@@ -28,6 +33,9 @@ void update() {
   VTIN = crm.var("VTIN") == "true";
   VTOUT = crm.var("VTOUT") == "true";
   TSWAP = crm.var("TSWAP") == "true";
+  // Begrenzen: Werte aus einer Sicherungsdatei werden nicht vom Schieberegler geprüft
+  TOFFI = constrain(crm.var("TOFFI").toFloat(), -5.0f, 5.0f);
+  TOFFO = constrain(crm.var("TOFFO").toFloat(), -5.0f, 5.0f);
   PUMPM = crm.var("PUMPM") == "true";
   PUMPSENSINV = crm.var("PUMPSENSINV") == "true";
   USEPM = crm.var("USEPM") == "true";

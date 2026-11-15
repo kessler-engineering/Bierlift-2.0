@@ -147,6 +147,8 @@
 #define L_NO 171
 #define L_COORD_NOT_SET 172
 #define L_BLYNK_TMPL 173
+#define L_TEMP_CORR_IN 174
+#define L_TEMP_CORR_OUT 175
 
 
 
@@ -318,6 +320,8 @@ String lng(uint16_t a) {
           case 171: return F("Нет");
           case 172: return F("Координаты не заданы!");
           case 173: return F("Blynk Template ID");
+          case 174: return F("Коррекция температуры внутри");
+          case 175: return F("Коррекция температуры снаружи");
           default: return F("н/д");
         }
       } break;
@@ -487,6 +491,8 @@ String lng(uint16_t a) {
           case 171: return F("No");
           case 172: return F("Coordinates not set!");
           case 173: return F("Blynk Template ID");
+          case 174: return F("Inside temperature correction");
+          case 175: return F("Outside temperature correction");
           default: return F("n/a");
         }
       } break;
@@ -656,6 +662,8 @@ String lng(uint16_t a) {
           case 171: return F("Nein");
           case 172: return F("Koordinaten nicht eingetragen!");
           case 173: return F("Blynk Template-ID");
+          case 174: return F("Korrektur Innentemperatur");
+          case 175: return F("Korrektur Außentemperatur");
           default: return F("n/a");
         }
       } break;

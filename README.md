@@ -6,7 +6,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 
 > *English summary:* BierLiftOS is the ESP32 firmware for the DIY in-ground beer cooler "Bierlift 2.0". It drives the lift motor and provides a multilingual (DE/EN/RU) progressive web app, 433 MHz remote control, push button, WS2812B lighting, MP3 playback, water pump control, DS18B20 temperature sensors, weather-aware "Night Cooling", Blynk IoT, Telegram bot, MQTT and a simple HTTP API. Build with PlatformIO (`pio run`), see below.
 
-**Aktuelle Version:** 2026.11.13d
+**Aktuelle Version:** 2026.11.15c
 
 ---
 
@@ -21,6 +21,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 - [Installation und Update](#installation-und-update)
 - [Selbst bauen (PlatformIO)](#selbst-bauen-platformio)
 - [Projektstruktur](#projektstruktur)
+- [Änderungen in 2026.11.15](#änderungen-in-20261115)
 - [Änderungen in 2026.11.12/13](#änderungen-in-2026111213)
 - [Änderungen in 2026.11.11](#änderungen-in-20261111)
 - [Sicherheitshinweise](#sicherheitshinweise)
@@ -37,7 +38,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 | **WLAN** | Eigener Access Point „BierliftKE“ (funktioniert ohne Heimnetz), Client im Heimnetz oder beides gleichzeitig |
 | **Beleuchtung** | WS2812B-LED-Streifen (bis 144 LEDs) mit Effekten oder fester Farbe, Geschwindigkeit, Helligkeit, Laufrichtung |
 | **Musik** | DFPlayer-MP3-Modul mit Micro-SD-Karte, eigene Titel für Hoch- und Runterfahren, Zufallswiedergabe, Lautstärke, Equalizer |
-| **Temperatur** | Zwei DS18B20-Sensoren (innen und außen), Anzeige in der Oberfläche, per API, MQTT, Blynk und Telegram |
+| **Temperatur** | Zwei DS18B20-Sensoren (innen und außen) mit einstellbarer Korrektur, Anzeige in der Oberfläche, per API, MQTT, Blynk und Telegram |
 | **Wasser** | Wassersensor und Pumpe, automatischer oder manueller Pumpbetrieb mit Nachlaufzeit |
 | **Night Cooling** | Öffnet den Lift nachts automatisch, wenn es draußen kühler ist, mit Wetterprüfung (Regen, Wind) über Open-Meteo |
 | **Komfort** | Kindersicherung, frei schaltbare Zusatzausgänge (GPIO 22/25/26), drei Sprachen (Deutsch, Englisch, Russisch), Farbschema, Sicherung und Wiederherstellung der Einstellungen, Firmware-Update über den Browser, Update-Hinweis bei neuer Version |
@@ -113,7 +114,7 @@ Bis zu vier Tasten eines handelsüblichen 433-MHz-Handsenders lassen sich je ein
 | **Steuerung** | Status, Temperatur innen/außen, Wasserstand, Tasten hoch / stopp / runter, optionale Schalter |
 | **Beleuchtung** | Anzahl LEDs, Effekt oder feste Farbe, Richtung, Geschwindigkeit, Anzahl gleichzeitig leuchtender LEDs, Helligkeit |
 | **Wasser** | Pumpe und Wassersensor aktivieren, Sensorlogik umkehren, Automatik mit Nachlaufzeit, Start/Stopp von Hand |
-| **Temperatur** | Sensoren innen/außen, Sensoren tauschen, Night Cooling |
+| **Temperatur** | Sensoren innen/außen, Sensoren tauschen, Korrektur innen/außen (−5 … +5 °C), Night Cooling |
 | **Musik** | Musik beim Hoch-/Runterfahren, Lautstärke, Equalizer (Normal, Pop, Rock, Jazz, Classic, Bass), Zufall, Titelnummern, Titelliste mit Wiedergabe |
 | **Blynk IoT** | Blynk ein/aus, Template-ID, Auth-Token |
 | **Funkfernbedienung** | Codes und Funktionen der Tasten 1–4 |
@@ -206,12 +207,12 @@ Gekaufte Steuerungen aus dem [Bierlift-Shop](https://www.bierlift.de/shop/) sind
 | `0x1000` | `bootloader_dout_40m_0x1000.bin` |
 | `0x8000` | `partitions_0x8000.bin` |
 | `0xE000` | `boot_0xe000.bin` |
-| `0x10000` | `BierLiftOS_v2026.11.13d_0x10000.bin` |
+| `0x10000` | `BierLiftOS_v2026.11.15c_0x10000.bin` |
 
 ```bash
 esptool.py --chip esp32 --baud 921600 write_flash --flash_mode dout --flash_freq 40m \
   0x1000 bootloader_dout_40m_0x1000.bin 0x8000 partitions_0x8000.bin \
-  0xe000 boot_0xe000.bin 0x10000 BierLiftOS_v2026.11.13d_0x10000.bin
+  0xe000 boot_0xe000.bin 0x10000 BierLiftOS_v2026.11.15c_0x10000.bin
 ```
 
 Vorher den Flash löschen (`esptool.py erase_flash`). Bebilderte Anleitung: [bierlift.de → Installation](https://www.bierlift.de/bierlift-web-server/installation/).
@@ -237,7 +238,7 @@ Wichtig für einen funktionierenden Build:
 - **Plattform `espressif32@3.5.0`** = Arduino-ESP32-Core **1.0.6**. Neuere Cores (2.x/3.x) sind nicht kompatibel.
 - **Partitionstabelle `min_spiffs` nicht ändern**, sonst funktionieren Updates über den Browser und gespeicherte Einstellungen nicht mehr.
 - Die Bibliotheken in [`lib/`](lib) (AsyncTCP mit größerem Verbindungs-Backlog, ESPAsyncWebServer, AsyncMqttClient, Blynk 1.0.1 mit `setTemplateID`-Erweiterung) sind bewusst eingefroren, weil passende Versionen in der Registry nicht mehr verfügbar sind. Details in [`lib/README.md`](lib/README.md).
-- **Weboberfläche:** Skript und Stil stehen in `BierLift2/web_script.js.h` (aktive, verschleierte Fassung oben; die Texte der WLAN- und Systemseite im Array `lang`) und `BierLift2/web_style.css.h`. Ausgeliefert wird die gzip-Fassung `BierLift2/web_gz.h`, die `tools/web_gzip.py` beim Bauen mit PlatformIO automatisch erzeugt. `web_gz.h` nie von Hand ändern.
+- **Weboberfläche:** Skript und Stil stehen in `BierLift2/web_script.js.h` (lesbare Fassung, die Texte der WLAN- und Systemseite im Array `lang`) und `BierLift2/web_style.css.h`. Ausgeliefert wird die gzip-Fassung `BierLift2/web_gz.h`, die `tools/web_gzip.py` beim Bauen mit PlatformIO automatisch erzeugt. `web_gz.h` nie von Hand ändern.
 - Alle übrigen Bibliotheken sind in `platformio.ini` mit fester Version eingetragen (ArduinoJson 6.21.5, FastLED 3.5.0, DFRobotDFPlayerMini 1.0.6, rc-switch 2.6.4, OneWire 2.3.7, DallasTemperature 3.11.0, FastBot 2.27.3).
 
 Der Quellcode in `BierLift2/` lässt sich weiterhin auch mit der Arduino-IDE öffnen (Board „ESP32 Dev Module“, Core 1.0.6, Partition „Minimal SPIFFS“). Wurden `web_script.js.h` oder `web_style.css.h` geändert, vorher `python tools/web_gzip.py` ausführen, damit `web_gz.h` aktuell ist.
@@ -282,6 +283,18 @@ BierLift2/
 ```
 
 ---
+
+## Änderungen in 2026.11.15
+
+**Weboberfläche**
+- **Speichermüll bei `/ui` behoben:** Bei knappem Speicher (z. B. kurz nach dem Start, während Telegram und die Update-Prüfung verschlüsselte Verbindungen aufbauen) lieferte `/ui` manchmal Speicherinhalt statt der Oberfläche, die Seite lud dann nicht. Die Bibliothek legte mehrere 8-KB-Kopien an und sendete auch dann die volle Länge, wenn eine davon scheiterte. Jetzt wird der Speicher vorab am Stück reserviert und ohne Kopien gesendet; ist zu wenig frei, antwortet der Lift mit `503` und der Browser fragt nach einer Sekunde neu.
+- **Lesbares Browser-Skript:** `web_script.js.h` enthält nur noch die lesbare Fassung. Die bisher ausgelieferte verschleierte Fassung wurde vorher entschlüsselt und verglichen (gleiche Texte, Funktionen und Werte; alle Seiten im Browser identisch). Weggefallen ist nur der Schutzcode des Verschleierers, der die Browser-Konsole stummschaltete. Firmware 5,5 KB kleiner.
+
+**Funktionen**
+- **Temperatur-Korrektur:** unter „Temperatur“ je ein Schieberegler für innen und außen (−5 … +5 °C in 0,1-°C-Schritten). Die Korrektur gilt überall: Anzeige, API, MQTT, Blynk, Telegram und Night Cooling. Hilfreich, weil der Innensensor auf dem Adapter Board nahe am Netzteil oft 2–3 °C zu viel misst.
+
+**Stabilität**
+- Webserver-Aufrufe (Oberfläche, `/api`, Speichern) warten höchstens 2 s auf die gemeinsame Netzwerksperre und antworten danach trotzdem, statt hängen zu bleiben, wenn z. B. Blynk keine Verbindung bekommt.
 
 ## Änderungen in 2026.11.12/13
 
