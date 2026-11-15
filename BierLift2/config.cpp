@@ -45,8 +45,9 @@ void CRMui3::cfgAutoSave() {
 
 void CRMui3::cfgPrint() {
   if (_debug) {
+    // Passwörter und Tokens auch in der seriellen Ausgabe nur maskiert zeigen
     String buf = String();
-    serializeJson(cfg, buf);
+    serializeCfgMasked(buf);
     SP(F("[CFG] "));
     SPLN(buf);
   }

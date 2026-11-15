@@ -92,6 +92,12 @@ void loop() {
 #ifdef DBGRUN
   dbgRun();
 #endif
+
+  // Rechenzeit abgeben: Ohne Pause dreht loop() über 100.000-mal pro Sekunde leer. Das hat
+  // das WLAN je nach Build mal mehr, mal weniger gestört (2026.11.11c–12c: bis 93 % Ping-
+  // Verlust, Weboberfläche lädt nicht; Messungen 12.11.2026). Alle Abläufe in loop() sind
+  // zeitgesteuert (millis), 1 ms Pause ändert an Motor, Taster, LEDs und Musik nichts.
+  delay(1);
 }
 
 

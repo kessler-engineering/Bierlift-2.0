@@ -25,3 +25,7 @@ Ab Blynk 1.2/1.3 ist das Konzept anders (BLYNK_TEMPLATE_ID/NAME fest im Code) �
 bei einem Blynk-Update muss die Anpassung neu gemacht werden.
 Beim späteren Umstieg auf Core 3.x diesen Ordner löschen und die Bibliotheken
 von ESP32Async über `lib_deps` einbinden.
+
+**AsyncTCP:** Eine Anpassung (markiert mit „BierLiftOS-Anpassung“) in `src/AsyncTCP.cpp`:
+Warteschlange für neue Verbindungen (`backlog`) 5 → 12, weil Browser bis zu 6 Verbindungen
+gleichzeitig öffnen (2026.11.12f).

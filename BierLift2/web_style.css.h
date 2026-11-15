@@ -14,7 +14,7 @@ const char style_css[] PROGMEM = R"=====(
 
 @font-face {
   font-family: "fonticon";
-  src: url(fonts/fonticon.woff2) format("woff2");
+  src: url(fonts/fonticon.woff2?v=2) format("woff2");
   font-style: normal;
 }
 

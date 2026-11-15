@@ -6,7 +6,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 
 > *English summary:* BierLiftOS is the ESP32 firmware for the DIY in-ground beer cooler "Bierlift 2.0". It drives the lift motor and provides a multilingual (DE/EN/RU) progressive web app, 433 MHz remote control, push button, WS2812B lighting, MP3 playback, water pump control, DS18B20 temperature sensors, weather-aware "Night Cooling", Blynk IoT, Telegram bot, MQTT and a simple HTTP API. Build with PlatformIO (`pio run`), see below.
 
-**Aktuelle Version:** 2026.11.11c
+**Aktuelle Version:** 2026.11.13d
 
 ---
 
@@ -21,6 +21,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 - [Installation und Update](#installation-und-update)
 - [Selbst bauen (PlatformIO)](#selbst-bauen-platformio)
 - [Projektstruktur](#projektstruktur)
+- [Änderungen in 2026.11.12/13](#änderungen-in-2026111213)
 - [Änderungen in 2026.11.11](#änderungen-in-20261111)
 - [Sicherheitshinweise](#sicherheitshinweise)
 - [Lizenz und Danksagung](#lizenz-und-danksagung)
@@ -45,7 +46,7 @@ Projektseite mit Bauanleitung, Stückliste, Konfigurator und Shop: **[www.bierli
 
 ## Hardware
 
-BierLiftOS ist für die **Bierlift-2.0-Steuerung** gemacht: ESP32-DevKit mit **30 Pins** (ESP32-WROOM-32, z. B. DOIT ESP32 DevKit V1) auf dem Control Board, verbunden mit dem Adapter Board, an dem Motor, Sensoren und Peripherie hängen. Eine Anleitung zur Elektrik steht auf [bierlift.de → Elektrik und Steuerung](https://www.bierlift.de/bierlift-2-0/4-elektrik-und-steuerung/). Die alte Elektronik (Bierlift-Shield / Bierlift 1.0) lässt sich mit Einschränkungen betreiben (Option unter *Sonstiges*).
+BierLiftOS ist für die **Bierlift-2.0-Steuerung** gemacht: ESP32-DevKit mit **30 Pins** (ESP32-WROOM-32, z. B. DOIT ESP32 DevKit V1) auf dem Control Board, verbunden mit dem Adapter Board, an dem Motor, Sensoren und Peripherie hängen. Eine Anleitung zur Elektrik steht auf [bierlift.de → Elektrik und Steuerung](https://www.bierlift.de/bierlift-2-0/4-elektrik-und-steuerung/). Die alte Elektronik (Bierlift-Shield / Bierlift 1.0) lässt sich mit Einschränkungen betreiben (Option unter *Verschiedenes*).
 
 ### Pinbelegung (ESP32)
 
@@ -85,6 +86,8 @@ BierLiftOS ist für die **Bierlift-2.0-Steuerung** gemacht: ESP32-DevKit mit **3
 
 Auf dem Smartphone lässt sich die Seite über „Zum Startbildschirm hinzufügen“ wie eine App ablegen.
 
+**Hinweis WLAN:** Der ESP32 funkt nur im 2,4-GHz-Band. Ist der Funkkanal des Routers stark belegt, reagiert die Weboberfläche träge. Ein fester, weniger belegter Kanal im Router (z. B. 1 statt 6) hilft.
+
 ### Drucktaster am Lift
 
 | Bedienung | Wirkung |
@@ -118,7 +121,7 @@ Bis zu vier Tasten eines handelsüblichen 433-MHz-Handsenders lassen sich je ein
 | **MQTT** | Server, Port, Login, Passwort, Topic-Präfix |
 | **WLAN** | Modus (Access Point, Client, beides), Heimnetz, Access-Point-Name und -Passwort, Wartezeit bis zum Rückfall in den AP-Modus |
 | **Fahrt** | Fahrzeiten hoch und runter, Bewegungssensor, Schnellgang, Schnell/Normal tauschen |
-| **Sonstiges** | Alte Elektronik (Bierlift Shield / 1.0), Kindersicherung, Onboard-LED, Update-Prüfung |
+| **Verschiedenes** | Alte Elektronik (Bierlift Shield / 1.0), Kindersicherung, Onboard-LED, Update-Prüfung |
 | **System** | Sprache, Zeitzone, Sommerzeit automatisch (EU), Farben, Werkseinstellungen, Einstellungen sichern und wiederherstellen, Firmware-Update |
 | **Development** | Zusatzausgänge GPIO 22/25/26: Grundzustand, beim Hoch- oder Runterfahren schalten, als benannter Schalter auf der Steuerseite |
 
@@ -192,7 +195,7 @@ Eigener Telegram-Bot (Token von @BotFather) zum Steuern und für Meldungen an de
 
 Seit 2026.11.11 enthält die Sicherungsdatei **keine Passwörter und Tokens** mehr. Nach dem Wiederherstellen auf einem neuen ESP32 müssen WLAN-Passwort, Telegram-Token, MQTT-Passwort und Blynk-Token neu eingegeben werden.
 
-BierLiftOS prüft alle 12 Stunden, ob es auf GitHub ein neueres Release gibt, und zeigt dann einen Hinweis (abschaltbar unter *Sonstiges*).
+BierLiftOS prüft, ob es auf GitHub ein neueres Release gibt, und zeigt dann einen Hinweis (abschaltbar unter *Verschiedenes*). Die erste Prüfung läuft direkt nach dem Verbinden mit dem WLAN; Telegram und Blynk starten erst danach (höchstens 90 s Wartezeit). Danach wird alle 12 Stunden erneut geprüft, aber nur, wenn genug Speicher frei ist (60 KB am Stück), sonst wird die Prüfung übersprungen. Mit Telegram und Blynk erscheint der Hinweis deshalb in der Regel erst nach einem Neustart.
 
 ### Erstinstallation auf einem leeren ESP32
 
@@ -203,12 +206,12 @@ Gekaufte Steuerungen aus dem [Bierlift-Shop](https://www.bierlift.de/shop/) sind
 | `0x1000` | `bootloader_dout_40m_0x1000.bin` |
 | `0x8000` | `partitions_0x8000.bin` |
 | `0xE000` | `boot_0xe000.bin` |
-| `0x10000` | `BierLiftOS_v2026.11.11c_0x10000.bin` |
+| `0x10000` | `BierLiftOS_v2026.11.13d_0x10000.bin` |
 
 ```bash
 esptool.py --chip esp32 --baud 921600 write_flash --flash_mode dout --flash_freq 40m \
   0x1000 bootloader_dout_40m_0x1000.bin 0x8000 partitions_0x8000.bin \
-  0xe000 boot_0xe000.bin 0x10000 BierLiftOS_v2026.11.11c_0x10000.bin
+  0xe000 boot_0xe000.bin 0x10000 BierLiftOS_v2026.11.13d_0x10000.bin
 ```
 
 Vorher den Flash löschen (`esptool.py erase_flash`). Bebilderte Anleitung: [bierlift.de → Installation](https://www.bierlift.de/bierlift-web-server/installation/).
@@ -233,10 +236,11 @@ Wichtig für einen funktionierenden Build:
 
 - **Plattform `espressif32@3.5.0`** = Arduino-ESP32-Core **1.0.6**. Neuere Cores (2.x/3.x) sind nicht kompatibel.
 - **Partitionstabelle `min_spiffs` nicht ändern**, sonst funktionieren Updates über den Browser und gespeicherte Einstellungen nicht mehr.
-- Die Bibliotheken in [`lib/`](lib) (AsyncTCP, ESPAsyncWebServer, AsyncMqttClient, Blynk 1.0.1 mit `setTemplateID`-Erweiterung) sind bewusst eingefroren, weil passende Versionen in der Registry nicht mehr verfügbar sind. Details in [`lib/README.md`](lib/README.md).
+- Die Bibliotheken in [`lib/`](lib) (AsyncTCP mit größerem Verbindungs-Backlog, ESPAsyncWebServer, AsyncMqttClient, Blynk 1.0.1 mit `setTemplateID`-Erweiterung) sind bewusst eingefroren, weil passende Versionen in der Registry nicht mehr verfügbar sind. Details in [`lib/README.md`](lib/README.md).
+- **Weboberfläche:** Skript und Stil stehen in `BierLift2/web_script.js.h` (aktive, verschleierte Fassung oben; die Texte der WLAN- und Systemseite im Array `lang`) und `BierLift2/web_style.css.h`. Ausgeliefert wird die gzip-Fassung `BierLift2/web_gz.h`, die `tools/web_gzip.py` beim Bauen mit PlatformIO automatisch erzeugt. `web_gz.h` nie von Hand ändern.
 - Alle übrigen Bibliotheken sind in `platformio.ini` mit fester Version eingetragen (ArduinoJson 6.21.5, FastLED 3.5.0, DFRobotDFPlayerMini 1.0.6, rc-switch 2.6.4, OneWire 2.3.7, DallasTemperature 3.11.0, FastBot 2.27.3).
 
-Der Quellcode in `BierLift2/` lässt sich weiterhin auch mit der Arduino-IDE öffnen (Board „ESP32 Dev Module“, Core 1.0.6, Partition „Minimal SPIFFS“).
+Der Quellcode in `BierLift2/` lässt sich weiterhin auch mit der Arduino-IDE öffnen (Board „ESP32 Dev Module“, Core 1.0.6, Partition „Minimal SPIFFS“). Wurden `web_script.js.h` oder `web_style.css.h` geändert, vorher `python tools/web_gzip.py` ausführen, damit `web_gz.h` aktuell ist.
 
 ---
 
@@ -245,6 +249,8 @@ Der Quellcode in `BierLift2/` lässt sich weiterhin auch mit der Arduino-IDE öf
 ```
 platformio.ini          PlatformIO-Projekt (src_dir = BierLift2)
 lib/                    eingefrorene Bibliotheken
+tools/web_gzip.py       erzeugt beim Bauen BierLift2/web_gz.h (gzip von Skript und Stil)
+tools/font_icons.py     baut die Steuer-Symbole in die Symbol-Schrift web/fonticon.woff2.h ein (fontTools, brotli)
 BierLift2/
 ├── BierLift2.ino       Start, setup() und loop()
 ├── 00_sett.h           Pins, globale Einstellungen
@@ -270,11 +276,39 @@ BierLift2/
 │   config.cpp, var.cpp, WLAN, GPIO)
 │   wi-fi.cpp, gpio.cpp
 ├── web_*.h, web/       Weboberfläche (HTML, CSS, JS, Schriften, Icons)
+├── web_gz.h            gzip-Fassung von Skript und Stil (automatisch erzeugt)
 ├── _bin/               fertige Binärdateien für die Erstinstallation
 └── _docs/              ältere Projektunterlagen
 ```
 
 ---
+
+## Änderungen in 2026.11.12/13
+
+Version 2026.11.13d behebt vor allem Netzwerk- und Absturzfehler, die in 2026.11.11 noch enthalten waren.
+
+**Stabilität und Netzwerk**
+- **Netzwerkfehler behoben:** Die Hauptschleife fragte die Befehlswarteschlange bei jedem Durchlauf ab (über 100 000-mal pro Sekunde, jedes Mal mit kurzer Interrupt-Sperre) und gab nie Rechenzeit ab. Folge waren bis zu 93 % Paketverlust und eine Weboberfläche, die nicht lud. Jetzt wird die Warteschlange nur bei Bedarf abgefragt, und die Hauptschleife legt pro Durchlauf eine Pause von 1 ms ein.
+- **WLAN-Stromsparmodus aus:** kürzere Antwortzeiten im Client-Modus.
+- **Absturz bei der Update-Prüfung behoben:** Neben Telegram und Blynk reichte der Speicher nicht für eine dritte verschlüsselte Verbindung; der ESP startete dann alle 2 Minuten neu. Jetzt läuft die Prüfung beim Start vor Telegram und Blynk und danach nur bei genug freiem Speicher. Der DNS-Server ist zusätzlich abgesichert.
+- **WLAN-Wiederverbindung:** Im Modus „Access Point + Client“ gab die Firmware nach einem Verbindungsverlust endgültig auf. Jetzt versucht sie es alle 15 s erneut und protokolliert den Trennungsgrund. Getestet: WLAN aus und wieder an, der ESP verbindet sich von selbst.
+
+**Weboberfläche**
+- **Übertragungsfehler bei `/ui` behoben:** Ab 7000 Byte wurde aus einem bereits freigegebenen Puffer gesendet; die Seite stockte oder brach ab (Fehler aus dem ursprünglichen CRMui3).
+- **Browser-Cache:** Skript, Stil und die übrigen Dateien der Oberfläche haben versionierte Adressen und bleiben im Browser gespeichert; die Startseite wird per `ETag` geprüft. Beim Öffnen werden nur noch die Startseite und die Daten übertragen.
+- **gzip:** `script.js` 30,6 → 12,4 KB, `style.css` 20,7 → 4,5 KB, Firmware 34 KB kleiner.
+- **Mehr gleichzeitige Verbindungen:** AsyncTCP nimmt bis zu 12 statt 5 wartende Verbindungen an.
+- **Neue Steuer-Symbole:** schlichte Winkel für hoch/runter, Doppelwinkel für den Schnellgang und ein abgerundetes Quadrat für Stopp (nach den Tabler-Icons, MIT-Lizenz). Alle Tasten sind gleich groß und haben gleiche Abstände.
+
+**Sound**
+- **MP3-Player ohne Bestätigungsmodus:** Die Bibliothek konnte darin endlos warten, der Start blieb stehen.
+- **Titelanzahl** wird jetzt richtig gelesen.
+- **Abstand zwischen Befehlen:** mindestens 120 ms zwischen zwei Befehlen an den Player; vorher startete die Musik manchmal erst nach mehreren Klicks.
+
+**Sonstiges**
+- Die serielle Ausgabe der Konfiguration zeigt Passwörter und Tokens nur noch als `********`.
+
+**Messwerte** (13.11.2026, zwei Steuerungen): mit Telegram, Blynk, Temperatur und Night Cooling 0 % Paketverlust, Ping im Median 8 ms, Weboberfläche in 0,10 s; mit MP3-Player 0 % Paketverlust, 5 ms, 0,12 s, Musik startet beim ersten Klick.
 
 ## Änderungen in 2026.11.11
 

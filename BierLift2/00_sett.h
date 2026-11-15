@@ -47,6 +47,11 @@ SemaphoreHandle_t wifi_mutex;
 // landen in dieser Queue und werden nur in loop() ausgeführt.
 #define LIFT_CMD_TOGGLE 100               // hoch/runter/stopp im Wechsel (wie Drucktaster)
 QueueHandle_t liftCmdQueue = NULL;
+// Merker "Befehl wartet": loop() fragt die Queue nur ab, wenn er gesetzt ist.
+// Eine Queue-Abfrage bei jedem loop()-Durchlauf (zehntausende Male pro Sekunde) sperrt
+// jedes Mal kurz die Interrupts und hat das WLAN massiv gestört (bis 93 % Ping-Verlust,
+// Weboberfläche nicht erreichbar; gemessen 12.11.2026, 2026.11.11c–12a betroffen).
+volatile bool liftCmdPending = false;
 TaskHandle_t loopTask_h = NULL;
 
 // Telegram-Meldungen werden gepuffert und im Telegram-Task gesendet (kein HTTPS in loop()).
@@ -117,7 +122,10 @@ uint32_t lastReceivedCode = 0, CODE1 = 0, CODE2 = 0,
          CODE3 = 0, CODE4 = 0;                                  //433-MHz-Fernbedienung
 bool USERF = false;
 
-bool CHUDT = false;                                             //Update-Prüfung
+bool CHUDT = false;
+// Update-Prüfung beim Start läuft noch: Telegram und Blynk warten so lange (max. 90 s), damit für
+// die TLS-Verbindung zu GitHub genug Speicher frei ist (neben Telegram + Blynk reicht er nicht).
+volatile bool udtBootCheck = false;                                             //Update-Prüfung
 
 bool DP22 = false, DP22U = false, DP22NO = false, DP22D = false, DP22C = false, DP22S = false, //Development-Pins
      DP25 = false, DP25U = false, DP25NO = false, DP25D = false, DP25C = false, DP25S = false,

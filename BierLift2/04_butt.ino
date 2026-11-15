@@ -77,8 +77,8 @@ void UP1() {
 
 void STP() {
   if (SUSE && dfInit && !releyStatus && lift_position) {
-    dfPlayer.stop();
-    dfPlayer.volume(0);
+    dfStop();
+    dfVolume(0);
   }
   releyAction(0);
 }
@@ -107,24 +107,24 @@ void playPreviousDemo() {
       //crm.webUpdate("SDEMO", String(n), true);
       crm.var("SDEMO", n, false);
     }
-    dfPlayer.stop();
-    dfPlayer.volume(SVOL);
-    dfPlayer.play(n);
+    dfStop();
+    dfVolume(SVOL);
+    dfPlay(n);
   }
 }
 
 void playDemo() {
   if (dfInit) {
-    dfPlayer.stop();
-    dfPlayer.volume(SVOL);
-    dfPlayer.play(crm.var("SDEMO").toInt());
+    dfStop();
+    dfVolume(SVOL);
+    dfPlay(crm.var("SDEMO").toInt());
   }
 }
 
 void stopDemo() {
   if (dfInit) {
-    dfPlayer.stop();
-    dfPlayer.volume(0);
+    dfStop();
+    dfVolume(0);
   }
 }
 
@@ -135,9 +135,9 @@ void playNextDemo() {
       n++;
       crm.var("SDEMO", n, false);
     }
-    dfPlayer.stop();
-    dfPlayer.volume(SVOL);
-    dfPlayer.play(n);
+    dfStop();
+    dfVolume(SVOL);
+    dfPlay(n);
   }
 }
 

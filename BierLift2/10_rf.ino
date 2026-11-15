@@ -70,7 +70,7 @@ void rfAction(int a) {
     case 5: {
         if (SVOL < 31) {
           SVOL++;
-          dfPlayer.volume(SVOL);
+          dfVolume(SVOL);
           crm.webUpdate("SVOL", String(SVOL), true);
         }
       } break;
@@ -78,7 +78,7 @@ void rfAction(int a) {
     case 6: {
         if (SVOL > 0) {
           SVOL--;
-          dfPlayer.volume(SVOL);
+          dfVolume(SVOL);
           crm.webUpdate("SVOL", String(SVOL), true);
         }
       } break;

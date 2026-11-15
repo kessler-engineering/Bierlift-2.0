@@ -92,8 +92,8 @@ void update() {
     if (mLEDold != mLED) mLED == 0 ? ledPowerAction(false) : ledPowerAction(true);
   }
   df_init();
-  if (SUSE && dfInit && SVOLold != SVOL) dfPlayer.volume(SVOL);
-  if (SUSE && dfInit && EQold != EQ) dfPlayer.EQ(EQ);
+  if (SUSE && dfInit && SVOLold != SVOL) dfVolume(SVOL);
+  if (SUSE && dfInit && EQold != EQ) dfEQ(EQ);
   if (!SUSE && dfInit) dfInit = false;
   if (SINVold != SINV) digitalWrite(SEED_PIN, !digitalRead(SEED_PIN));
 
@@ -145,7 +145,10 @@ void update() {
     rfControl_task = NULL;
   }
 
-  if (CHUDT && metric_task == NULL) xTaskCreatePinnedToCore(metricRun, "UpdateChecker", 8000, NULL, 1, &metric_task, tskNO_AFFINITY);
+  if (CHUDT && metric_task == NULL) {
+    udtBootCheck = true;   // Telegram/Blynk warten, bis die erste Update-Prüfung durch ist
+    xTaskCreatePinnedToCore(metricRun, "UpdateChecker", 8000, NULL, 1, &metric_task, tskNO_AFFINITY);
+  }
   else if (!CHUDT && metric_task != NULL) {
     vTaskDelete(metric_task);
     metric_task = NULL;

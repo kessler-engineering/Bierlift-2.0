@@ -4,9 +4,9 @@ void reley_handle() {
     if (releyCommandStatus) {
       if (millis() - releyCommandProtTimer >= COMMAND_PROT_TIME) {
         if (SUSE && dfInit && !effMute) {
-          dfPlayer.stop();
-          dfPlayer.volume(SVOL);
-          dfPlayer.play(mp3StrPars(crm.var(releyDirection ? "SUP" : "SDOWN")));
+          dfStop();
+          dfVolume(SVOL);
+          dfPlay(mp3StrPars(crm.var(releyDirection ? "SUP" : "SDOWN")));
         }
         digitalWrite(releyDirection ? UP_PIN : DOWN_PIN, HIGH);
         ledOnBoard(1);
@@ -32,8 +32,8 @@ void reley_handle() {
         if (SAVE_LIFT_STATUS) crm.var("LPOS", String(lift_position), 1);
         nCoolStatus = false;
         if (SUSE && dfInit) {
-          dfPlayer.stop();
-          dfPlayer.volume(0);
+          dfStop();
+          dfVolume(0);
         }
       }
       releyDirection = !releyDirection;
@@ -53,13 +53,20 @@ void releyAction(int action) {
   }
   if (loopTask_h == NULL || xTaskGetCurrentTaskHandle() == loopTask_h) {
     liftCmdExec(action);
-  } else if (liftCmdQueue == NULL || xQueueSend(liftCmdQueue, &action, 0) != pdTRUE) {
+  } else if (liftCmdQueue != NULL && xQueueSend(liftCmdQueue, &action, 0) == pdTRUE) {
+    liftCmdPending = true;   // erst nach dem Einstellen setzen, sonst könnte loop() den Befehl verpassen
+  } else {
     Serial.println(F("[LIFT] Command queue full, command dropped"));
   }
 }
 
 
+// Aus loop(): Queue nur leeren, wenn ein Befehl gemeldet ist (siehe liftCmdPending in 00_sett.h).
+// Merker zuerst löschen, dann alles abholen – ein gleichzeitig eingestellter Befehl
+// wird entweder jetzt mit abgeholt oder setzt den Merker für den nächsten Durchlauf neu.
 void liftCmdQueueHandle() {
+  if (!liftCmdPending) return;
+  liftCmdPending = false;
   int a;
   while (liftCmdQueue != NULL && xQueueReceive(liftCmdQueue, &a, 0) == pdTRUE) {
     liftCmdExec(a);
