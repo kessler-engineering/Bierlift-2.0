@@ -1,4 +1,4 @@
-#define CRM_VER "2026.11.13d"
+#define CRM_VER "2026.11.15c"
 
 #define CONFIG_BUTTON_PIN 0
 #define AUTO_SAVE_TIME_INTERVAL 30000

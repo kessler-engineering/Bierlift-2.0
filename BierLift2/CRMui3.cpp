@@ -1,4 +1,5 @@
 #include "CRMui3.h"
+#include <memory>
 
 #include "web_index.html.h"
 #include "web_rf.html.h"
@@ -229,19 +230,42 @@ void CRMui3::http() {
   server.on("/ui", HTTP_POST, [this](AsyncWebServerRequest * request) {
     if (_AuthenticateStatus && !request->authenticate(_WebAuthLogin.c_str(), _WebAuthPass.c_str()))
       return request->requestAuthentication();
+    // Speicher für die ganze Antwort vorab am Stück reservieren (letzte Größe + Reserve). Klappt das
+    // nicht (Heap knapp, z. B. während TLS von Telegram/Update-Prüfung), lieber 503 senden – der
+    // Browser fragt nach 1 s erneut – als eine unvollständige Antwort zu bauen.
+    static size_t uiLen = 9000;
+    _buf = String();
+    if (!_buf.reserve(uiLen + 1024)) {
+      Serial.printf("[UI] no memory for /ui (%u B needed, max block %u B)\n", uiLen + 1024, ESP.getMaxAllocHeap());
+      return request->send(503, F("text/plain"), F("busy"));
+    }
     String _id = uint64ToString(ESP.getEfuseMac());
-    _buf = String(F("{\"_t\":0,\"an\":\"")) + _app_name + F("\",\"id\":\"") + _id + F("\",\"fw\":\"") +
-           CRM_VER + F("\",\"a\":") + String(_AuthenticateStatus) + F(",\"c\":[");
+    _buf += F("{\"_t\":0,\"an\":\"");
+    _buf += _app_name; _buf += F("\",\"id\":\""); _buf += _id; _buf += F("\",\"fw\":\"");
+    _buf += CRM_VER; _buf += F("\",\"a\":"); _buf += String(_AuthenticateStatus); _buf += F(",\"c\":[");
     ui();
     _buf += F("],\"cfg\":");
     serializeCfgMasked(_buf);
     _buf += "}";
-    // Immer als Kopie senden. Früher ab 7000 Byte per send_P(_buf.c_str()) – send_P liest die
-    // Daten aber erst später stückweise, während _buf direkt danach geleert wurde: der Rest kam
-    // aus freigegebenem Speicher, die Übertragung stockte 15–30 s oder brach ab (/ui ist seit
-    // 2026.11 ≈7,2 KB groß; gemessen 12.11.2026).
-    request->send(200, F("application/json"), _buf);
+    if (_buf.length() > uiLen) uiLen = _buf.length();
+    // Ohne Kopie senden: Text in einen gemeinsam gehaltenen Puffer verschieben, die Bibliothek holt ihn
+    // stückweise ab. Vorher (seit 12f) machte AsyncBasicResponse mehrere 8-KB-Kopien/Teilstrings;
+    // scheiterte eine davon, sendete sie trotzdem die volle Länge aus dem Speicher dahinter
+    // -> Speichermüll mit richtiger Länge (gemessen 15.11.2026 auf .182 kurz nach dem Start).
+    std::shared_ptr<String> body = std::make_shared<String>(std::move(_buf));
     _buf = String();
+    if (!body->endsWith("}")) {    // Aufbau unvollständig (z. B. Reserve überschritten und kein Speicher)
+      Serial.println(F("[UI] /ui incomplete, sending 503"));
+      return request->send(503, F("text/plain"), F("busy"));
+    }
+    AsyncWebServerResponse *r = request->beginResponse(F("application/json"), body->length(),
+    [body](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+      size_t n = body->length() - index;
+      if (n > maxLen) n = maxLen;
+      memcpy(buffer, body->c_str() + index, n);
+      return n;
+    });
+    request->send(r);
   });
 
 

@@ -1,6 +1,8 @@
 
 void interface() {
-  xSemaphoreTake(wifi_mutex, portMAX_DELAY);
+  // Nicht endlos warten: Hängt Blynk im Netz, wird die Oberfläche trotzdem aufgebaut.
+  bool mtx = xSemaphoreTake(wifi_mutex, pdMS_TO_TICKS(MUTEX_WAIT_WEB_MS)) == pdTRUE;
+  if (!mtx) Serial.println(F("[UI] wifi_mutex busy, building UI without it"));
 
   //STEUERUNG
   crm.page(lng(L_M_CONTROL));
@@ -69,6 +71,8 @@ void interface() {
   crm.input({INPUT_CHECKBOX, "VTIN", lng(L_EN_TEMP_MEAS_IN), "false", "1"});
   crm.input({INPUT_CHECKBOX, "VTOUT", lng(L_EN_TEMP_MEAS_OUT), "false", "1"});
   crm.input({INPUT_CHECKBOX, "TSWAP", lng(L_SWAP_TEMP_SENS_VOL), "false", "1"});
+  if (VTIN) crm.range({"TOFFI", lng(L_TEMP_CORR_IN), 0, -5, 5, 0.1, " °C"});
+  if (VTOUT) crm.range({"TOFFO", lng(L_TEMP_CORR_OUT), 0, -5, 5, 0.1, " °C"});
   if (VTIN && VTOUT) {
     crm.input({INPUT_CHECKBOX, "NCOOL", lng(L_NIGTH_COOLING), "false", "1"});
     if (NCOOL) {
@@ -236,7 +240,7 @@ void interface() {
     udtNotif.once_ms(2000, udtNotifSend);
   }
 
-  xSemaphoreGive(wifi_mutex);
+  if (mtx) xSemaphoreGive(wifi_mutex);
 }
 
 

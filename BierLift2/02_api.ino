@@ -3,7 +3,9 @@ void api(String payload) {
   Serial.print("[API] ");
   Serial.println(payload);
 
-  xSemaphoreTake(wifi_mutex, portMAX_DELAY);
+  // Nicht endlos warten (läuft im Webserver-Task): Befehle gehen ohnehin über die Queue.
+  bool mtx = xSemaphoreTake(wifi_mutex, pdMS_TO_TICKS(MUTEX_WAIT_WEB_MS)) == pdTRUE;
+  if (!mtx) Serial.println(F("[API] wifi_mutex busy, answering without it"));
   DynamicJsonDocument doc(200);
   deserializeJson(doc, payload);
 
@@ -55,5 +57,5 @@ void api(String payload) {
     crm.apiResponse("var", crm.var(v));
   }
 
-  xSemaphoreGive(wifi_mutex);
+  if (mtx) xSemaphoreGive(wifi_mutex);
 }

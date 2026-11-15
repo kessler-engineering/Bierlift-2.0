@@ -42,6 +42,11 @@
 
 //*********************** V A R I A B L E N ***********************
 SemaphoreHandle_t wifi_mutex;
+// Höchstens so lange warten Webserver-Aufrufe (Oberfläche, /api, Speichern) auf den wifi_mutex.
+// Hängt Blynk oder die Update-Prüfung im Netz, antwortet das Web trotzdem, statt endlos zu warten.
+#define MUTEX_WAIT_WEB_MS 2000
+// Beim Beenden eines Tasks (Blynk, DS18B20) etwas länger warten; klappt es nicht, beim nächsten Speichern erneut.
+#define MUTEX_WAIT_TASK_DEL_MS 5000
 
 // Motorbefehle aus anderen Tasks (Web/API, MQTT, Blynk, Telegram, Funk, Ticker)
 // landen in dieser Queue und werden nur in loop() ausgeführt.
@@ -87,6 +92,7 @@ int lastAction = 0;                                             //_
 
 float Tin = 0, Tout = 0;                                        //Temperatur
 bool VTIN = false, VTOUT = false, TSWAP = false;
+float TOFFI = 0, TOFFO = 0;                                     //Korrektur innen/außen in °C (wird zum Messwert addiert)
 
 bool waterVol = 0;                                              //Wasserstandsensor
 
@@ -122,10 +128,10 @@ uint32_t lastReceivedCode = 0, CODE1 = 0, CODE2 = 0,
          CODE3 = 0, CODE4 = 0;                                  //433-MHz-Fernbedienung
 bool USERF = false;
 
-bool CHUDT = false;
+bool CHUDT = false;                                             //Update-Prüfung
 // Update-Prüfung beim Start läuft noch: Telegram und Blynk warten so lange (max. 90 s), damit für
 // die TLS-Verbindung zu GitHub genug Speicher frei ist (neben Telegram + Blynk reicht er nicht).
-volatile bool udtBootCheck = false;                                             //Update-Prüfung
+volatile bool udtBootCheck = false;
 
 bool DP22 = false, DP22U = false, DP22NO = false, DP22D = false, DP22C = false, DP22S = false, //Development-Pins
      DP25 = false, DP25U = false, DP25NO = false, DP25D = false, DP25C = false, DP25S = false,
